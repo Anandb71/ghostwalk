@@ -12,6 +12,7 @@ import RacePanel from './ui/RacePanel'
 import AnnealPanel from './ui/AnnealPanel'
 import EvidencePanel from './ui/EvidencePanel'
 import StatusOverlay from './ui/StatusOverlay'
+import SceneBoundary from './ui/SceneBoundary'
 import { cx } from './ui/primitives'
 
 function LeftPanel({ mode }: { mode: Mode }) {
@@ -43,7 +44,9 @@ export default function App() {
     <div className="relative h-full w-full overflow-hidden bg-ink">
       {/* full-bleed 3D scene; the overlay below only takes pointer events on its panels */}
       <div className="absolute inset-0">
-        <Scene />
+        <SceneBoundary>
+          <Scene />
+        </SceneBoundary>
       </div>
 
       <div className="pointer-events-none absolute inset-0 flex flex-col gap-3 p-3">
