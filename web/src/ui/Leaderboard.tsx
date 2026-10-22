@@ -52,7 +52,10 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
 
   const [entries, setEntries] = useState<LeaderboardEntry[]>(() => loadEntries())
   const [name, setName] = useState(() => loadName())
-  const [note, setNote] = useState('')
+  // A status note belongs to the layout it was written for; it disappears after the next swap.
+  const [noteState, setNoteState] = useState<{ text: string; at: Assignment | null }>({ text: '', at: null })
+  const setNote = (text: string) => setNoteState({ text, at: useStore.getState().assignment })
+  const note = noteState.at === assignment ? noteState.text : ''
 
   // Scores are fresh only if they arrived after the latest layout change: remember which
   // assignment was on the floor when the player's held-out score last changed.
@@ -203,7 +206,7 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
   return (
     <section
       aria-labelledby="leaderboard-title"
-      className={`w-80 rounded-xl border border-white/10 bg-panel/90 p-3 text-xs shadow-lg backdrop-blur ${className}`}
+      className={`w-[22rem] max-w-full rounded-xl border border-white/10 bg-panel/90 p-3 text-xs shadow-lg backdrop-blur ${className}`}
     >
       <header className="mb-2 flex items-baseline justify-between gap-2">
         <h2 id="leaderboard-title" className="text-sm font-semibold tracking-wide">
@@ -216,22 +219,29 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
         <p className="py-4 text-center opacity-60">{data ? 'Waiting for the first scores…' : 'Loading data…'}</p>
       ) : (
         <div className="max-h-64 overflow-y-auto">
-          <table className="tabular w-full border-collapse">
+          <table className="tabular w-full table-fixed border-collapse">
+            <colgroup>
+              <col className="w-5" />
+              <col />
+              <col className="w-14" />
+              <col className="w-20" />
+              <col className="w-5" />
+            </colgroup>
             <thead>
-              <tr className="text-left text-[11px] opacity-60">
-                <th scope="col" className="w-6 py-1 font-normal">
+              <tr className="text-left text-[11px] leading-tight opacity-60">
+                <th scope="col" className="py-1 align-bottom font-normal">
                   #
                 </th>
-                <th scope="col" className="py-1 font-normal">
+                <th scope="col" className="py-1 align-bottom font-normal">
                   Layout
                 </th>
-                <th scope="col" className="py-1 text-right font-normal">
+                <th scope="col" className="py-1 text-right align-bottom font-normal">
                   km
                 </th>
-                <th scope="col" className="py-1 text-right font-normal">
+                <th scope="col" className="py-1 text-right align-bottom font-normal">
                   Δ vs Baseline
                 </th>
-                <th scope="col" className="w-5 py-1">
+                <th scope="col" className="py-1">
                   <span className="sr-only">Remove</span>
                 </th>
               </tr>
@@ -244,7 +254,7 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
                   aria-current={r.isCurrent ? 'true' : undefined}
                 >
                   <td className="py-1 opacity-60">{i + 1}</td>
-                  <td className="max-w-0 py-1 pr-2">
+                  <td className="py-1 pr-2">
                     <div className={`truncate ${r.kind === 'reference' ? 'text-ghost' : r.isCurrent ? 'text-you' : ''}`}>
                       {r.name}
                       {r.isCurrent && r.kind !== 'current' ? <span className="ml-1 opacity-70">(on floor)</span> : null}
@@ -265,7 +275,7 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
                         type="button"
                         onClick={() => remove(r.key.slice('saved-'.length))}
                         className="rounded px-1 opacity-40 hover:opacity-100 focus-visible:opacity-100"
-                        aria-label={`Remove ${r.name}`}
+                        aria-label={`Remove ${r.name}, ${formatKm(r.holdoutM)} km`}
                         title="Remove"
                       >
                         ×
