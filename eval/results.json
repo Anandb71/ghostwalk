@@ -1,5 +1,5 @@
 {
-  "commit": "645629f",
+  "commit": "7aba833",
   "simDirty": false,
   "node": "v25.2.1",
   "dataset": {
@@ -18,8 +18,8 @@
       "holdoutM": 105754.40000000007,
       "trainSPerOrder": 127.94896755162243,
       "holdoutSPerOrder": 129.98755411255434,
-      "deltaTrainVsBaseline": 0.039585810328800264,
-      "deltaHoldoutVsBaseline": 0.040218126878708294,
+      "deltaTrainVsBaseline": 0.043166840924768524,
+      "deltaHoldoutVsBaseline": 0.039784481063438015,
       "deltaHoldoutVsOriginal": 0
     },
     {
@@ -30,33 +30,33 @@
       "holdoutM": 109106.39999999992,
       "trainSPerOrder": 130.69410029498516,
       "holdoutSPerOrder": 132.2548701298702,
-      "deltaTrainVsBaseline": 0.07982014310728958,
-      "deltaHoldoutVsBaseline": 0.07318896460552882,
+      "deltaTrainVsBaseline": 0.08353976772335336,
+      "deltaHoldoutVsBaseline": 0.07274157391748926,
       "deltaHoldoutVsOriginal": 0.03169608073044583
     },
     {
       "key": "baseline",
       "name": "Baseline (fast movers nearest dock)",
       "policy": "exact",
-      "trainM": 92517.99999999999,
-      "holdoutM": 101665.60000000006,
-      "trainSPerOrder": 125.24808259587024,
-      "holdoutSPerOrder": 127.22186147186157,
+      "trainM": 92200.39999999992,
+      "holdoutM": 101707.99999999993,
+      "trainSPerOrder": 125.0138643067847,
+      "holdoutSPerOrder": 127.25054112554126,
       "deltaTrainVsBaseline": 0,
       "deltaHoldoutVsBaseline": 0,
-      "deltaHoldoutVsOriginal": -0.03866316673348813
+      "deltaHoldoutVsOriginal": -0.03826223778868909
     },
     {
       "key": "sa",
       "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
       "policy": "exact",
-      "trainM": 79937.1999999999,
-      "holdoutM": 90376.79999999997,
-      "trainSPerOrder": 115.97020648967556,
-      "holdoutSPerOrder": 119.58603896103905,
-      "deltaTrainVsBaseline": -0.13598218725004962,
-      "deltaHoldoutVsBaseline": -0.11103854204372066,
-      "deltaHoldoutVsOriginal": -0.14540860711232895
+      "trainM": 79914,
+      "holdoutM": 90395.99999999999,
+      "trainSPerOrder": 115.95309734513286,
+      "holdoutSPerOrder": 119.59902597402574,
+      "deltaTrainVsBaseline": -0.13325755636634906,
+      "deltaHoldoutVsBaseline": -0.11122035631415372,
+      "deltaHoldoutVsOriginal": -0.14522705438260797
     }
   ],
   "sshape": [
@@ -68,33 +68,33 @@
       "holdoutM": 127596,
       "trainSPerOrder": 142.17020648967548,
       "holdoutSPerOrder": 144.76136363636346,
-      "deltaTrainVsBaseline": 0.024768889961801488,
-      "deltaHoldoutVsBaseline": 0.0199781289369505,
+      "deltaTrainVsBaseline": 0.03193459360521733,
+      "deltaHoldoutVsBaseline": 0.029441663681514907,
       "deltaHoldoutVsOriginal": 0
     },
     {
       "key": "baseline",
       "name": "Baseline (fast movers nearest dock)",
       "policy": "sshape",
-      "trainM": 112673.60000000008,
-      "holdoutM": 125096.80000000009,
-      "trainSPerOrder": 140.11209439528017,
-      "holdoutSPerOrder": 143.0708874458871,
+      "trainM": 111891.20000000001,
+      "holdoutM": 123946.80000000002,
+      "trainSPerOrder": 139.53510324483776,
+      "holdoutSPerOrder": 142.2930194805193,
       "deltaTrainVsBaseline": 0,
       "deltaHoldoutVsBaseline": 0,
-      "deltaHoldoutVsOriginal": -0.019586820903475854
+      "deltaHoldoutVsOriginal": -0.028599642622025634
     },
     {
       "key": "sa",
       "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
       "policy": "sshape",
-      "trainM": 96612.80000000008,
-      "holdoutM": 109104.0000000002,
-      "trainSPerOrder": 128.26784660766955,
-      "holdoutSPerOrder": 132.2532467532469,
-      "deltaTrainVsBaseline": -0.14254270743102193,
-      "deltaHoldoutVsBaseline": -0.12784339807253164,
-      "deltaHoldoutVsOriginal": -0.14492617323426904
+      "trainM": 96448.80000000003,
+      "holdoutM": 109326.40000000008,
+      "trainSPerOrder": 128.14690265486723,
+      "holdoutSPerOrder": 132.40367965367938,
+      "deltaTrainVsBaseline": -0.1380126408511123,
+      "deltaHoldoutVsBaseline": -0.11795705899627851,
+      "deltaHoldoutVsOriginal": -0.1431831718862654
     }
   ],
   "routing": [
@@ -115,93 +115,105 @@
     {
       "key": "baseline",
       "name": "Baseline (fast movers nearest dock)",
-      "exactOrders": 2035,
-      "heuristicOrders": 327,
-      "exactShareM": 0.7783108357245404
+      "exactOrders": 2041,
+      "heuristicOrders": 321,
+      "exactShareM": 0.7819733441150557
     },
     {
       "key": "sa",
       "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
-      "exactOrders": 2084,
-      "heuristicOrders": 278,
-      "exactShareM": 0.8027901405638991
+      "exactOrders": 2094,
+      "heuristicOrders": 268,
+      "exactShareM": 0.8091386295578626
     }
   ],
   "heuristicQuality": {
-    "orders": 1679,
-    "optimal": 1549,
-    "meanGap": 0.0031492726678273245,
-    "maxGap": 0.10588235294117632
+    "orders": 1684,
+    "optimal": 1563,
+    "meanGap": 0.0031062273182137757,
+    "maxGap": 0.11881188118811914
+  },
+  "heuristicInUse": {
+    "orders": 172,
+    "optimal": 101,
+    "meanGap": 0.0160961703732628,
+    "maxGap": 0.09302325581395343,
+    "metresGap": 0.016268330853797863,
+    "skippedOverMaxStops": 149,
+    "maxStopsSeen": 48,
+    "offlineMaxStops": 16
   },
   "perf": {
     "fullRescoreOrders": 2362,
-    "coldMedianMs": 30.8637000000017,
-    "warmMedianMs": 1.2075999999942724,
-    "withPathsMedianMs": 34.518599999995786,
-    "saIterationsPerSecond": 546.4665886602612,
-    "saElapsedMs": 54898.141299999996
+    "coldMedianMs": 46.989199999996345,
+    "warmMedianMs": 1.2013000000006286,
+    "withPathsMedianMs": 52.99439999999595,
+    "saIterationsPerSecond": 455.54504668810574,
+    "saElapsedMs": 65855.1777,
+    "saLiveIterations": 3000,
+    "saLiveColdIterationsPerSecond": 288.77718858888835
   },
   "sa": {
     "seed": 42,
     "iterations": 30000,
     "startFrom": "baseline",
     "set": "train",
-    "startM": 92517.99999999999,
-    "bestM": 79937.1999999999,
-    "holdoutM": 90376.79999999997
+    "startM": 92200.39999999992,
+    "bestM": 79914,
+    "holdoutM": 90395.99999999999
   },
   "seeds": {
     "rows": [
       {
         "seed": 42,
         "iterations": 30000,
-        "trainM": 79937.1999999999,
-        "holdoutM": 90376.79999999997,
-        "elapsedMs": 54898.141299999996
+        "trainM": 79914,
+        "holdoutM": 90395.99999999999,
+        "elapsedMs": 65855.1777
       },
       {
         "seed": 43,
-        "iterations": 15000,
-        "trainM": 80789.99999999983,
-        "holdoutM": 91920,
-        "elapsedMs": 31450.95040000001
+        "iterations": 30000,
+        "trainM": 79939.99999999993,
+        "holdoutM": 90957.5999999999,
+        "elapsedMs": 64994.70420000005
       },
       {
         "seed": 44,
-        "iterations": 15000,
-        "trainM": 81439.99999999974,
-        "holdoutM": 92111.99999999996,
-        "elapsedMs": 30909.992199999964
+        "iterations": 30000,
+        "trainM": 80790.39999999989,
+        "holdoutM": 92349.20000000004,
+        "elapsedMs": 72970.30900000004
       },
       {
         "seed": 45,
-        "iterations": 15000,
-        "trainM": 80209.99999999997,
-        "holdoutM": 90775.19999999991,
-        "elapsedMs": 30055.78100000003
+        "iterations": 30000,
+        "trainM": 81269.19999999982,
+        "holdoutM": 93257.99999999972,
+        "elapsedMs": 82880.4092
       },
       {
         "seed": 46,
-        "iterations": 15000,
-        "trainM": 80980.39999999979,
-        "holdoutM": 92368.39999999997,
-        "elapsedMs": 33127.83330000003
+        "iterations": 30000,
+        "trainM": 79855.99999999985,
+        "holdoutM": 90597.59999999987,
+        "elapsedMs": 99737.6765
       }
     ],
     "summary": {
       "train": {
-        "mean": 80671.51999999984,
-        "sd": 602.5430374669529
+        "mean": 80353.9199999999,
+        "sd": 640.51463059008
       },
       "holdout": {
-        "mean": 91510.47999999995,
-        "sd": 879.1226717586231
+        "mean": 91511.6799999999,
+        "sd": 1238.7859024060078
       },
       "holdoutDeltaVsBaseline": {
-        "mean": -0.09988747422923876,
-        "sd": 0.008647198971516652
+        "mean": -0.10025091438234975,
+        "sd": 0.012179827569178535
       }
     },
-    "extraIterations": 15000
+    "extraIterations": 30000
   }
 }
