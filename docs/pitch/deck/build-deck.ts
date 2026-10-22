@@ -137,6 +137,28 @@ function headline(t: MdTable | null): { pct: number; col: string } | null {
 }
 const head = headline(heldTable)
 
+/** Supporting lines for the Results slide, copied from eval/results.md (never typed): the Headline bullets
+ *  after the first (which the big number already shows), plus SA vs Baseline under S-shape routing. */
+function supportLines(md: string | null, tables: MdTable[]): string[] {
+  if (!md) return []
+  const lines = md.replace(/\r\n/g, '\n').split('\n')
+  const start = lines.findIndex((l) => l.startsWith('## Headline'))
+  const out: string[] = []
+  if (start >= 0) {
+    for (const l of lines.slice(start + 1)) {
+      if (l.startsWith('## ')) break
+      if (l.startsWith('- ')) out.push(l.slice(2).replace(/\*\*/g, '').replace(/`/g, ''))
+    }
+    out.shift()
+  }
+  const ab = tables.find((t) => t.header.some((h) => /s-shape/i.test(h)))
+  const saRow = ab?.rows.find((r) => /^(sa|simulated)/i.test(r[0]))
+  const last = ab ? ab.header.length - 1 : -1
+  if (ab && saRow && /baseline/i.test(ab.header[last])) out.push(`S-shape routing (ablation): ${ab.header[last]}: ${saRow[last]}`)
+  return out
+}
+const support = supportLines(resultsMd, resultTables)
+
 const saPath = at('web/public/layouts/sa_seed42.json')
 const saShipped = existsSync(saPath)
   ? (JSON.parse(readFileSync(saPath, 'utf8')) as { seed: number; iterations: number; curve: [number, number, number][] })
@@ -261,7 +283,7 @@ pres.addSection({ title: 'Problem' })
   s.addText('Race your old warehouse', { placeholder: 'title' })
   text(
     s,
-    'A 3D digital twin of a picking floor, driven by one real month of orders. Re-slot the cartons, race the ghost of your old layout, and beat the optimiser, with every gain measured on held-out orders.',
+    'A 3D digital twin of a picking floor, driven by one real month of orders. A ghost picker walks the fast-movers baseline, a solid picker walks our optimised layout or yours, and every gain is measured on held-out orders.',
     { x: M, y: 4.35, w: 5.6, h: 1.4, fontSize: 18, color: MUTED },
   )
   text(s, 'NexAI Hack 2026 · Problem 4.2 · Warehouse Digital Twin', { x: M, y: 5.95, w: 5.6, h: 0.35, fontSize: 14, color: FG, bold: true })
@@ -270,7 +292,7 @@ pres.addSection({ title: 'Problem' })
   const w = h * floorAspect
   s.addImage({ data: floorData, x: W - M - w, y: (7.5 - h) / 2, w, h, altText: 'Floor plan of the declared warehouse: 5 aisles, 100 slots, dock at the front-left', objectName: 'floorplan' })
   s.addNotes(
-    'Hook line: same orders, two layouts, and the ghost is our old warehouse. Ghostwalk is a browser 3D twin of a picking floor driven by real November 2011 orders from UCI Online Retail II. The rest of the deck backs up one claim: the walking we save is measured on orders the layout never saw.',
+    'Hook line: same orders, two layouts. The ghost walks the baseline the brief told us to beat, the solid picker walks the layout our optimiser found. Ghostwalk is a browser 3D twin of a picking floor driven by real November 2011 orders from UCI Online Retail II. The rest of the deck backs up one claim: the walking we save is measured on orders the layout never saw.',
   )
 }
 
@@ -385,7 +407,7 @@ pres.addSection({ title: 'Solution' })
   const cw = (CONTENT_W - 0.4) / 2
   card(
     s, M, 4.05, cw, 2.65, 'HK', 'Held–Karp dynamic programming',
-    `dp[mask][j] is the shortest walk from the dock through exactly the stops in mask, ending at j. That is O(2ⁿ·n²): about 250k steps at n = ${EXACT_MAX_STOPS}, under a millisecond. The share of metres routed exactly is reported.`,
+    `dp[mask][j] is the shortest walk from the dock through exactly the stops in mask, ending at j. That is O(2ⁿ·n²): about 250k steps at n = ${EXACT_MAX_STOPS}, solved once per stop set and cached. The share of metres routed exactly is reported.`,
     GHOST,
   )
   card(
@@ -401,7 +423,7 @@ pres.addSection({ title: 'Solution' })
 {
   const s = contentSlide('Solution', 'Re-slot, replay, race the ghost')
   const shots: [string, string][] = [
-    ['race', 'Race: ghost = the layout you started from, solid = yours, same held-out orders'],
+    ['race', 'Race: ghost = Baseline, solid = the SA layout or yours, over the same held-out orders'],
     ['slot', 'Slot: click a carton, click another to swap, in 3D or on the 2D map; train and held-out re-score'],
     ['anneal', 'Anneal: the optimiser runs live in a worker, and cartons fly as swaps are accepted'],
   ]
@@ -424,7 +446,7 @@ pres.addSection({ title: 'Solution' })
   })
   text(s, 'Must-haves: replay with live distance and time counters · swap and re-score before / after · automatic fast-movers baseline', { x: M, y: 6.45, w: CONTENT_W, h: 0.35, fontSize: 12, color: MUTED })
   s.addNotes(
-    'The game loop. Replay one invoice in 3D. Slot: press Baseline, then make your own swaps. Race your layout against the ghost of the one you started from. Anneal: watch the optimiser play. Evidence: the numbers behind it all. The three must-haves of PS 4.2 are on the bottom line. Heatmap and leaderboard are the stretch goals we built.',
+    'The game loop. Replay one invoice in 3D. Slot: press Baseline, then make your own swaps. Race: the Baseline ghost against the SA layout, or against your own. Anneal: watch the optimiser play. Evidence: the numbers behind it all. The three must-haves of PS 4.2 are on the bottom line. Heatmap and leaderboard are the stretch goals we built.',
   )
 }
 
@@ -533,7 +555,7 @@ pres.addSection({ title: 'Solution' })
   // sa_seed42.json -> the app (the store loads it as the SA reference)
   arrow(s, nx + 0.3, by + 2.9, bx + bw, by + 2.9, YOU)
   s.addNotes(
-    "One simulator everywhere. The engine is plain TypeScript with no DOM. In the browser it runs in a Web Worker so the 3D stays at 60 fps. The scene only plays back paths the simulator produced. The same files run in Node for npm run eval, which writes the results this deck and the README quote, plus the shipped SA layout.",
+    "One simulator everywhere. The engine is plain TypeScript with no DOM. In the browser it runs in a Web Worker, so the 3D keeps animating while layouts are scored. The scene only plays back paths the simulator produced. The same files run in Node for npm run eval, which writes the results this deck and the README quote, plus the shipped SA layout.",
   )
 }
 
@@ -566,12 +588,19 @@ pres.addSection({ title: 'Evidence' })
       x: tx, y: 1.6, w: tw, colW: Array.from({ length: cols }, (_, j) => (j === 0 ? tw * 0.3 : (tw * 0.7) / (cols - 1))),
       fontFace: THEME.bodyFontFace, rowH: 0.4, border: { type: 'solid', pt: 0.5, color: HEX.accent5 }, fill: { color: HEX.dk1 }, margin: [0.04, 0.08, 0.04, 0.08],
     })
+    if (support.length) {
+      text(
+        s,
+        support.map((l, i) => ({ text: l, options: { bullet: true, breakLine: i < support.length - 1 } })),
+        { x: M, y: 4.85, w: CONTENT_W, h: 1.35, fontSize: 14, color: FG, valign: 'top', paraSpaceAfter: 4 },
+      )
+    }
     text(s, 'Copied from eval/results.md, produced by npm run eval with the same engine as the app. No number on this slide is typed by hand.', { x: M, y: 6.3, w: CONTENT_W, h: 0.4, fontSize: 11, color: MUTED, italic: true })
   } else {
     pendingFrame(s, M, 1.6, CONTENT_W, 4.9, 'held-out results table from eval/results.md (run npm run eval in web/, then rebuild this deck)')
   }
   s.addNotes(
-    'Read the headline as the held-out gain versus Baseline, the layout the problem statement told us to beat. Original and Random are there so nobody can say we picked a weak starting point. SA is reported over several seeds in eval/results.md, so the spread is visible.',
+    'Read the headline as the held-out gain versus Baseline, the layout the problem statement told us to beat. Original and Random are there so nobody can say we picked a weak starting point. SA is reported over five seeds in eval/results.md, so the spread is visible. Why Baseline barely beats catalogue order: most of the top co-picked pairs are product families with neighbouring StockCodes, so catalogue order keeps them close by accident, while Baseline ranks products one at a time and scatters them. The annealer scores whole orders and puts them back together.',
   )
 }
 
