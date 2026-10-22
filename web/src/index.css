@@ -1,0 +1,26 @@
+@import "tailwindcss";
+
+@theme {
+  --color-ink: #0b0f17;
+  --color-panel: #121826;
+  --color-you: #ff7a1a;
+  --color-ghost: #39d0ff;
+  --color-gain: #3ddc84;
+  --color-loss: #ff5470;
+  --font-sans: "Space Grotesk", ui-sans-serif, system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+
+html,
+body,
+#root {
+  height: 100%;
+  margin: 0;
+  background: #0b0f17;
+  color: #e6edf7;
+  font-family: var(--font-sans);
+  overflow: hidden;
+}
+
+.tabular {
+  font-variant-numeric: tabular-nums;
+}
