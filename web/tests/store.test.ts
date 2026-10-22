@@ -184,6 +184,12 @@ describe('store + worker integration', () => {
 
   it('anneal cancel returns the best-so-far', async () => {
     S().startAnneal(200_000, 3)
+    // the scene shows the live SA layout, so swaps on your layout are refused while it runs
+    const before = S().assignment
+    S().selectSlot(4)
+    S().swapSlots(4, 40)
+    expect(S().selectedSlot).toBeNull()
+    expect(S().assignment).toBe(before)
     await until(() => S().anneal.progress.length >= 2, 'anneal progress')
     S().cancelAnneal()
     await until(() => !S().anneal.running, 'anneal cancel')

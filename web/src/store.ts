@@ -208,6 +208,13 @@ const isPermutation = (arr: unknown, n: number): arr is number[] => {
 
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
+/**
+ * Swaps are refused while the optimiser runs (the scene shows its live layout, not yours) and while a
+ * race is being prepared or walked (the solid picker's plans were made for the layout at the start).
+ */
+export const slottingLocked = (s: GhostState): boolean =>
+  s.anneal.running || s.race.preparing || (s.race.active && !(s.race.finished.ghost && s.race.finished.solid))
+
 function safePlan(data: PreparedData, orderIdx: number, assignment: Assignment, policy: Policy): OrderScore | null {
   const order = data.orders[orderIdx]
   if (!order) return null
@@ -535,7 +542,7 @@ export const useStore = create<GhostState>()((set, get) => {
         if (s.selectedSlot !== null) set({ selectedSlot: null })
         return
       }
-      if (slot < 0 || slot >= SLOTS) return
+      if (slot < 0 || slot >= SLOTS || slottingLocked(s)) return
       if (s.selectedSlot === null) set({ selectedSlot: slot })
       else if (s.selectedSlot === slot) set({ selectedSlot: null })
       else get().swapSlots(s.selectedSlot, slot)
@@ -548,7 +555,7 @@ export const useStore = create<GhostState>()((set, get) => {
     swapSlots: (a, b) => {
       const s = get()
       const cur = s.assignment
-      if (!cur || a === b || a < 0 || b < 0 || a >= SLOTS || b >= SLOTS) {
+      if (!cur || a === b || a < 0 || b < 0 || a >= SLOTS || b >= SLOTS || slottingLocked(s)) {
         set({ selectedSlot: null })
         return
       }
