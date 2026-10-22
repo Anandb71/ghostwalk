@@ -22,10 +22,19 @@ function ConvergenceChart() {
 
   const baseM = baseTrain && baseTrain.policy === 'exact' ? baseTrain.totalM : null
   const shippedM = shipped ? shipped.trainM : null
+  // The shipped 30k run's best-so-far, drawn behind the live curve. Its x is the share of ITS OWN budget
+  // (30k), so a 3k live run and the 30k reference both span the full width.
+  const shippedCurve = useMemo<[number, number][]>(() => {
+    const c = shipped?.curve
+    const n = shipped?.iterations
+    if (!c || !c.length || !n) return []
+    return c.map(([i, , b]) => [i / n, b])
+  }, [shipped])
 
   const view = useMemo(() => {
     const ys: number[] = []
     for (const [, c, b] of pts) ys.push(c, b)
+    for (const [, b] of shippedCurve) ys.push(b)
     if (baseM !== null) ys.push(baseM)
     if (shippedM !== null) ys.push(shippedM)
     if (!ys.length) return null
@@ -42,7 +51,7 @@ function ConvergenceChart() {
     const x = (i: number) => PAD.l + (i / xMax) * (W - PAD.l - PAD.r)
     const y = (m: number) => PAD.t + (1 - (m - lo) / (hi - lo)) * (H - PAD.t - PAD.b)
     return { lo, hi, xMax, x, y }
-  }, [pts, baseM, shippedM, iterations])
+  }, [pts, shippedCurve, baseM, shippedM, iterations])
 
   if (!view) {
     return (
@@ -93,6 +102,18 @@ function ConvergenceChart() {
         </g>
       )}
 
+      {/* shipped 30k best-so-far, x scaled to its own budget */}
+      {shippedCurve.length > 1 && (
+        <polyline
+          points={shippedCurve.map(([f, b]) => `${(PAD.l + f * (W - PAD.l - PAD.r)).toFixed(1)},${y(b).toFixed(1)}`).join(' ')}
+          fill="none"
+          stroke="#39d0ff"
+          strokeOpacity={0.35}
+          strokeWidth={1.4}
+          strokeLinejoin="round"
+        />
+      )}
+
       {/* curves */}
       {pts.length > 1 && (
         <>
@@ -109,6 +130,8 @@ export default function AnnealPanel() {
   const startAnneal = useStore((s) => s.startAnneal)
   const cancelAnneal = useStore((s) => s.cancelAnneal)
   const applyAnnealResult = useStore((s) => s.applyAnnealResult)
+  const discardAnnealPreview = useStore((s) => s.discardAnnealPreview)
+  const previewing = useStore((s) => s.anneal.preview !== null)
   const baseTrain = useStore((s) => s.scores.baseline.train)
   const startedFrom = useStore((s) => s.startedFrom)
   const swaps = useStore((s) => s.undo.length)
@@ -192,6 +215,9 @@ export default function AnnealPanel() {
         <span className="flex items-center gap-1">
           <span className="inline-block w-4 border-t border-dashed border-white/50" /> reference
         </span>
+        <span className="flex items-center gap-1" title="The shipped run's best-so-far; x = share of its own 30k-iteration budget">
+          <span className="inline-block h-px w-4 bg-ghost/60" /> shipped 30k (x = share of budget)
+        </span>
       </div>
 
       <div className="mt-2.5 grid grid-cols-3 gap-2">
@@ -217,9 +243,21 @@ export default function AnnealPanel() {
           <div className="tabular text-[10px] text-white/40">
             seed {r.seed} · {r.iterations.toLocaleString('en-GB')} iterations · {(r.elapsedMs / 1000).toFixed(1)} s
           </div>
-          <Button className="mt-2 w-full" tone="primary" onClick={applyAnnealResult}>
-            Apply result to my layout
-          </Button>
+          {previewing && (
+            <div className="mt-1 text-[10px] text-white/50">
+              The floor shows this result. Apply it (Undo brings yours back) or discard it to see your layout again.
+            </div>
+          )}
+          <div className="mt-2 grid grid-cols-[1fr_auto] gap-1.5">
+            <Button tone="primary" onClick={applyAnnealResult}>
+              Apply result to my layout
+            </Button>
+            {previewing && (
+              <Button tone="quiet" onClick={discardAnnealPreview} title="Show your own layout again (the result stays here)">
+                Discard
+              </Button>
+            )}
+          </div>
         </div>
       )}
     </Panel>

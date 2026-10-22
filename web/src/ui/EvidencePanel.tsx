@@ -28,6 +28,7 @@ const maybe = (v: number | null, f: (n: number) => string = fmtInt) => (v === nu
 
 function routingLine(sc: ScoreResult | null) {
   if (!sc) return <Skeleton className="h-3 w-40" />
+  if (sc.policy === 'sshape') return <>S-shape policy (human picker, not optimised) · {fmtInt(sc.orders)} orders</>
   return (
     <>
       {fmtInt(sc.exactOrders)} exact ({(sc.exactShareM * 100).toFixed(1)}% of metres) · {fmtInt(sc.heuristicOrders)} heuristic
@@ -77,13 +78,25 @@ export default function EvidencePanel() {
           />
           <Row k="Train / held-out orders" v={meta ? `${fmtInt(meta.split.train)} / ${fmtInt(meta.split.holdout)}` : '—'} />
           <Row k="Top-100 coverage of month lines" v={coverage === null ? '—' : `${coveragePct}%`} />
+          {meta?.cleaning?.length ? (
+            <>
+              <div className="mt-1.5 text-[10px] uppercase tracking-[0.12em] text-white/40">Cleaning rules (data/prepare.py)</div>
+              <ul className="mt-0.5 list-disc space-y-0.5 pl-4 text-[11px] leading-snug text-white/65">
+                {meta.cleaning.map((rule) => (
+                  <li key={rule}>{rule}</li>
+                ))}
+              </ul>
+            </>
+          ) : null}
         </Section>
 
         <Section title={`Routing honesty · You (${policy === 'exact' ? 'exact' : 'S-shape'})`}>
           <Row k="Train" v={routingLine(you.train)} />
           <Row k="Held-out" v={routingLine(you.holdout)} />
           <p className="mt-1 text-[10px] leading-snug text-white/40">
-            Held–Karp is exact for ≤ 11 stops; larger orders use nearest-neighbour + 2-opt and are flagged.
+            {policy === 'exact'
+              ? 'Held–Karp is exact for ≤ 11 stops; larger orders use nearest-neighbour + 2-opt and are flagged. eval/results.md measures that heuristic against an offline exact solver.'
+              : 'S-shape is the ablation: every order is walked aisle by aisle the way a human picker does, with no optimisation. Switch to Exact for the Held–Karp / heuristic split.'}
           </p>
         </Section>
 
@@ -175,7 +188,22 @@ export default function EvidencePanel() {
             }
           />
           {anneal.itersPerSec !== null && <Row k="SA speed (measured)" v={`${fmtInt(anneal.itersPerSec)} it/s`} />}
-          <Row k="Commit" v={<code className="text-[11px] text-ghost">{COMMIT}</code>} />
+          <Row k="App build commit" v={<code className="text-[11px] text-ghost">{COMMIT}</code>} />
+          {anneal.shipped?.commit && (
+            <Row
+              k="Eval numbers & shipped SA from"
+              v={
+                <span className="text-[11px]">
+                  <code className="text-ghost">{anneal.shipped.commit}</code>
+                  {anneal.shipped.commit !== COMMIT && <span className="text-white/45"> (eval/results.md)</span>}
+                </span>
+              }
+            />
+          )}
+          <p className="mt-1 text-[10px] leading-snug text-white/40">
+            Every km on screen is re-scored live in the worker by the same sim/ code; eval/results.md is a separate headless
+            run of it (npm run eval), so the two hashes can differ while the numbers agree.
+          </p>
         </Section>
 
         <Section title="Assumptions & limitations">
@@ -183,6 +211,10 @@ export default function EvidencePanel() {
             <li>Geometry is declared: 5 aisles × 2 sides × 10 bays (100 slots), 3 cross-aisles (front, middle, back).</li>
             <li>Walking speed 1.2 m/s; 8 s per order line at the shelf.</li>
             <li>Top-100 SKUs cover {coveragePct}% of the month's order lines; the rest of the catalogue is out of scope.</li>
+            <li>
+              The top-100 SKU set is chosen on the full month (both halves). Within it, every ranking you see (carton colour,
+              top-10 labels), the Baseline and SA use train picks (1–15 Nov) only.
+            </li>
             <li>Data is a UK online gift retailer (B2B-heavy), Nov 2011.</li>
             <li>The warehouse layout is declared, not observed: we do not know the retailer's real floor.</li>
             <li>Time model is synthetic (walk + fixed pick time); no search, travel up ladders, or packing.</li>

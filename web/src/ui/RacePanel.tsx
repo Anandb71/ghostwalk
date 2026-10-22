@@ -58,9 +58,17 @@ export default function RacePanel() {
   const assignment = useStore((s) => s.assignment)
   const scores = useStore((s) => s.scores)
   const ready = useStore((s) => s.status === 'ready')
+  const anneal = useStore((s) => s.anneal.running)
 
-  // Ghost defaults to where the player started; the store falls back if that layout equals yours.
-  const [choice, setChoice] = useState<StartKey>(startedFrom)
+  // The control always shows the ghost that will actually run (or is running): a layout identical to
+  // yours cannot be the ghost, so it is disabled and the default moves to the first one that differs.
+  const [picked, setPicked] = useState<StartKey | null>(null)
+  const valid = (k: StartKey) => !!layouts[k] && !sameLayout(layouts[k], assignment)
+  const running = (race.active || race.preparing) && race.ghostKey ? race.ghostKey : null
+  const fallback = (['original', 'baseline', 'sa'] as StartKey[]).find(valid) ?? 'original'
+  const choice: StartKey =
+    picked && valid(picked) ? picked : running && valid(running) ? running : valid(startedFrom) ? startedFrom : fallback
+  const noGhost = !(['original', 'baseline', 'sa'] as StartKey[]).some(valid)
 
   const ghostPlannedM = useMemo(() => race.ghostPlans.reduce((a, p) => a + p.m, 0), [race.ghostPlans])
   const solidPlannedM = useMemo(() => race.solidPlans.reduce((a, p) => a + p.m, 0), [race.solidPlans])
@@ -73,8 +81,8 @@ export default function RacePanel() {
   const option = (k: StartKey, label: string) => ({
     value: k,
     label,
-    disabled: !layouts[k],
-    title: !layouts[k] ? 'not available yet' : sameLayout(layouts[k], assignment) ? 'identical to your layout: the race falls back to another ghost' : undefined,
+    disabled: !valid(k),
+    title: !layouts[k] ? 'not available yet' : sameLayout(layouts[k], assignment) ? 'identical to your layout, so it cannot be the ghost' : undefined,
   })
 
   return (
@@ -90,7 +98,7 @@ export default function RacePanel() {
         <Segmented<StartKey>
           label="Ghost layout"
           value={choice}
-          onChange={setChoice}
+          onChange={setPicked}
           size="xs"
           options={[option('original', 'Original'), option('baseline', 'Baseline'), option('sa', 'SA')]}
         />
@@ -100,7 +108,15 @@ export default function RacePanel() {
               Stop
             </Button>
           )}
-          <Button tone="primary" disabled={!ready || race.preparing} onClick={() => startRace(choice)} title="Start race (R)">
+          <Button
+            tone="primary"
+            disabled={!ready || race.preparing || anneal || noGhost}
+            onClick={() => {
+              startRace(choice)
+              setPicked(null)
+            }}
+            title={anneal ? 'Wait for the anneal to finish' : 'Start race (R)'}
+          >
             {race.preparing ? 'Preparing…' : race.active ? 'Restart race' : 'Start race'}
           </Button>
         </div>

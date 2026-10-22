@@ -15,6 +15,8 @@ import StatusOverlay from './ui/StatusOverlay'
 import SceneBoundary from './ui/SceneBoundary'
 import { cx } from './ui/primitives'
 
+let demoStarted = false
+
 function LeftPanel({ mode }: { mode: Mode }) {
   switch (mode) {
     case 'replay':
@@ -39,6 +41,15 @@ export default function App() {
   useEffect(() => {
     void load() // idempotent: safe under StrictMode double effects
   }, [load])
+
+  // Demo hook (open with ?demo): the ghost race is already running when the judges look up.
+  // You = Baseline, ghost = Original (the old catalogue warehouse), 20x. Fires once per page load.
+  useEffect(() => {
+    if (!ready || demoStarted) return
+    if (typeof window === 'undefined' || !new URLSearchParams(window.location.search).has('demo')) return
+    demoStarted = true
+    useStore.getState().startDemo()
+  }, [ready])
 
   return (
     <div className="relative h-full w-full overflow-hidden bg-ink">
