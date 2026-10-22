@@ -6,6 +6,8 @@
 
 **What you see.** A 3D picking floor that replays one real month of orders: 2,362 invoices from UCI Online Retail II, November 2011. A translucent **ghost** picker walks the layout the problem statement tells us to beat, fast movers nearest the dock (**Baseline**). A solid picker walks the layout found by our simulated-annealing optimiser, or your own. Both walk the same orders along the aisles, each with its own distance and time counters. You can swap cartons yourself, and every swap is re-scored in a Web Worker.
 
+![Race mode: the translucent Baseline ghost and the solid SA picker walk the same held-out orders; the KPI card shows held-out km for every layout](docs/img/hero.png)
+
 **Result.** All layouts are built from orders of 1–15 Nov and scored on **held-out** orders of 16–30 Nov:
 
 <!-- sync:headline -->
