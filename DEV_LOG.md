@@ -34,3 +34,4 @@ Decisions, AI assistance, experiments and rejected approaches, in time order (IS
 
 ## AI assistance
 Claude Code (Anthropic) for research, design, and code generation, with multi-agent workflows for parallel module builds and review. Every module is reviewed and explained by the team.
+- #8–#11 (Junaid): the leaderboard model, panel and tests, `scripts/sync-readme.ts`, `scripts/floorplan.ts`, the README, `docs/architecture.md` and the pitch material were drafted with Claude Code, then checked in the browser and against the spec before committing.
