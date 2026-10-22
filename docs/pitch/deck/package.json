@@ -1,0 +1,19 @@
+{
+  "name": "ghostwalk-pitch-deck",
+  "private": true,
+  "version": "1.0.0",
+  "description": "Builds docs/pitch/Ghostwalk_pitch.pptx from orders.json meta, eval/results.md and screenshots",
+  "type": "module",
+  "scripts": {
+    "build": "tsx build-deck.ts"
+  },
+  "dependencies": {
+    "pptxgenjs": "4.0.1",
+    "qrcode": "1.5.4",
+    "sharp": "0.35.5",
+    "tsx": "4.23.15"
+  },
+  "devDependencies": {
+    "@types/qrcode": "1.5.6"
+  }
+}
