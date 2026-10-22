@@ -4,7 +4,7 @@ Drafts for the LinkedIn and X posts the rules require (§7), plus every URL the 
 
 Rules §7 checklist for each post: problem + solution ✔ · screenshot or short clip · repository URL ✔ · deployment URL (`{{LIVE_URL}}`) · **#NEXAI2026** ✔ · tag teammates (`{{TEAMMATE}}`) · tag the official conclave handles (`{{OFFICIAL_HANDLES}}`, once announced).
 
-The result numbers below (11.1 %, 101.67 → 90.38 km, 10.0 % ± 0.9 pp, 2,362 orders) are from `eval/results.md` at engine commit `645629f`. **Re-check them against the final `eval/results.md` before posting** (checklist in [pitch/README.md](pitch/README.md)).
+The result numbers below (11.1 %, 101.71 → 90.40 km, 10.0 % ± 1.2 pp, 2,362 orders) are from `eval/results.md` generated at engine commit `7aba833`. **Re-check them against the final `eval/results.md` before posting** (checklist in [pitch/README.md](pitch/README.md)).
 
 ## Placeholders to fill
 
@@ -32,7 +32,7 @@ The result numbers below (11.1 %, 101.67 → 90.38 km, 10.0 % ± 0.9 pp, 2,362 o
 > - A translucent ghost picker walks the classic "fast movers nearest the dock" baseline. A solid picker walks a layout found by simulated annealing, or your own. Both walk the same orders.
 > - You can swap cartons yourself and watch the score change, then run the optimiser live in the browser.
 >
-> Layouts are built from orders of 1–15 Nov and scored on 16–30 Nov, which none of them saw. On those held-out orders the annealed layout walks 11.1% less than the baseline (101.67 km to 90.38 km). Across five seeds it is 10.0% ± 0.9 pp. The orders are real; the warehouse geometry and the time model are our stated assumptions.
+> Layouts are built from orders of 1–15 Nov and scored on 16–30 Nov, which none of them saw. On those held-out orders the annealed layout walks 11.1% less than the baseline (101.71 km to 90.40 km). Across five seeds it is 10.0% ± 1.2 pp. The orders are real; the warehouse geometry and the time model are our stated assumptions.
 >
 > No backend and no API keys: it is a static site, and all scoring runs in a Web Worker.
 >
