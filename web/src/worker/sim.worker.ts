@@ -15,6 +15,7 @@ const ctx = self as unknown as WorkerScope
 let data: PreparedData | null = null
 const running = new Map<number, { cancelled: boolean }>()
 const CHUNK_MS = 30 // run SA for about this long before yielding to the message queue
+const SUB_STEP = 10 // iterations between clock checks
 
 const post = (msg: FromWorker, transfer?: Transferable[]) => ctx.postMessage(msg, transfer)
 const fail = (reqId: number, err: unknown) =>
@@ -40,8 +41,9 @@ function startAnneal(reqId: number, msg: Extract<ToWorker, { type: 'ANNEAL' }>):
       if (state.cancelled) return finish(true)
       const t0 = performance.now()
       do {
-        sa.step(every)
-        post({ type: 'PROGRESS', reqId, progress: sa.progress() })
+        // small sub-steps keep CANCEL / SCORE latency low; progress still lands every `every` iterations
+        sa.step(Math.min(SUB_STEP, every - (sa.iter % every)))
+        if (sa.iter % every === 0 || sa.done) post({ type: 'PROGRESS', reqId, progress: sa.progress() })
       } while (!sa.done && performance.now() - t0 < CHUNK_MS)
       if (sa.done) return finish(false)
       setTimeout(chunk, 0)
