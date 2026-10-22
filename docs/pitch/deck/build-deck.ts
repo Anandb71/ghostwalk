@@ -138,7 +138,7 @@ function headline(t: MdTable | null): { pct: number; col: string } | null {
 const head = headline(heldTable)
 
 /** Supporting lines for the Results slide, copied from eval/results.md (never typed): the Headline bullets
- *  after the first (which the big number already shows), plus SA vs Baseline under S-shape routing. */
+ *  that carry a percentage, after the first (which the big number already shows), plus SA vs Baseline under S-shape routing. */
 function supportLines(md: string | null, tables: MdTable[]): string[] {
   if (!md) return []
   const lines = md.replace(/\r\n/g, '\n').split('\n')
@@ -147,7 +147,7 @@ function supportLines(md: string | null, tables: MdTable[]): string[] {
   if (start >= 0) {
     for (const l of lines.slice(start + 1)) {
       if (l.startsWith('## ')) break
-      if (l.startsWith('- ')) out.push(l.slice(2).replace(/\*\*/g, '').replace(/`/g, ''))
+      if (l.startsWith('- ') && /%/.test(l)) out.push(l.slice(2).replace(/\*\*/g, '').replace(/`/g, ''))
     }
     out.shift()
   }
