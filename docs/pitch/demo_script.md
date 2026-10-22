@@ -1,65 +1,67 @@
 # Demo script: 5 minutes, live
 
-This follows the beats in [BUILD_SPEC §9](../BUILD_SPEC.md). **A** = Anand drives the laptop, **J** = Junaid speaks, and we swap roles for the Evidence beat so both of us are heard. Spoken lines are written out in full: about 470 words, roughly 3.5 minutes at a calm pace, which leaves time for the actions. Do not read out numbers from this sheet. Read them off the screen, because the screen is the evidence.
+This follows the beats in [BUILD_SPEC §9](../BUILD_SPEC.md), led by the comparison that matters: the brief's Baseline against our optimiser. **A** = Anand, **J** = Junaid. Whoever is not speaking drives the laptop, so both of us explain a technical beat. About 460 spoken words, roughly 3.5 minutes at a calm pace, which leaves time for clicks and camera moves.
 
-Keyboard: `Space` play/pause · `1` `2` `3` camera Overview / Follow / Top · `R` race · `Esc` clear selection.
+Numbers in [square brackets] are what we expect to see on screen. **Read them off the screen, not off this sheet**: the screen is the evidence. If the final `npm run eval` changes them, update the brackets (see the checklist in [README.md](README.md)).
+
+Keys: `Space` play/pause · `1` `2` `3` camera Overview / Follow / Top · `R` race · `Esc` clear selection. Modes are the tabs in the top bar: Replay, Slot, Race, Anneal, Evidence.
 
 ## Before the demo (T − 10 min)
 
-- [ ] Open the **deployed** URL in Chrome, full screen (F11), zoom 100%, quality **Medium**, policy **Exact**.
-- [ ] Hard-refresh once, so the deployed build is current and the commit hash in Evidence matches `main`.
-- [ ] Leaderboard: two rehearsal entries saved ("Anand", "Junaid"), so the board is not empty on stage.
-- [ ] Hero order loaded in Replay (see "Picks for the demo" below), camera **Follow**.
-- [ ] Race tab pre-set to ghost = **Baseline**, so the hook starts with one click.
-- [ ] Laptop on mains power, notifications off (Focus assist), Wi-Fi only as a fallback: after first load the app needs no network.
-- [ ] Fallback ready: the recorded demo (`demo.mp4`) open in a paused player on a second desktop.
+- [ ] Open the **deployed** URL in Chrome, full screen (F11), zoom 100%. Top bar: routing **Exact**, quality **MQ**.
+- [ ] Hard-refresh once. Evidence → Reproducibility shows the commit hash of the build we submit.
+- [ ] Set up the hook: **Slot** tab → **Apply SA layout**. Then **Race** tab → Ghost: **Baseline**. Do not press Start yet.
+  Use the **Start race** button, not `R`: with the SA layout on the floor, `R` picks Original as the ghost.
+- [ ] Leaderboard (if mounted): two rehearsal entries saved, so the board is not empty.
+- [ ] Laptop on mains power, notifications off. After the first load the app needs no network.
+- [ ] Fallbacks ready: the recording (`Ghostwalk_demo.mp4`) paused in a player, and `npm run preview` in `web/`.
 
 ## The run
 
-| Time | Who | On screen (A) | Say (J) |
+| Time | Speaks | On screen (the other person drives) | Say |
 |---|---|---|---|
-| **0:00** | A + J | Press `R`. Ghost race running, camera Overview. | "Same six orders, two layouts. The see-through picker is our old warehouse. The solid one is the new layout. Same invoices, same aisles. Watch the counters." |
-| 0:20 | | Let both pickers finish. Point at the two counter groups. | "Every metre you see is measured, not claimed. That is what this problem asks for, and it is what we built around." |
-| **0:30** | | Open the Data card. Click the hottest (orange) carton. | "This is real data: one month of UCI Online Retail II, November 2011, a UK gift retailer. We cleaned out cancellations, returns and postage codes and kept the top 100 products. This carton is the most-picked product of the month." |
-| **0:50** | | Replay tab, hero order, `2` Follow camera, `Space` at 1×. | "Here is one real invoice. The picker leaves the dock, walks the aisles, never through a rack, stops at each slot, eight seconds a line, and comes back. The route is the exact shortest tour, computed with Held–Karp." |
-| 1:20 | | Toggle policy **Exact → S-shape**, replay. | "This is what a human picker usually does: walk every aisle end to end. The metres go up. That difference is routing. The rest of the demo is about slotting." Toggle back to **Exact**. |
-| **1:40** | | Slot tab. Press **Baseline**: cartons fly into place. KPI card fills. | "The problem statement gives us a baseline to beat: fast movers nearest the dock. Notice there are two columns, train and held-out. Everything is decided on the first half of November and scored on the second half, which the layout has never seen." |
-| 2:05 | | `3` Top camera. Rehearsed swap: Wooden **Tree** next to Wooden **Star** and **Heart**. | "Baseline only looks at how often each product is picked, not at what is picked *together*. These three Scandinavian decorations travel in the same orders, but the tree is ranked low, so Baseline parks it far away. One swap…" (delta goes green) "…and held-out walking drops." |
-| **2:30** | | Race: ghost **Baseline** vs **You**. | "Now we race my layout against Baseline on held-out orders. Both are labelled. 'This race' is these six orders; 'Full held-out' is all of them." |
-| 3:00 | | Race: ghost **Original** vs **Baseline**. | "And for scale, catalogue order, what a warehouse does when nobody slots, against Baseline. That gap is big, which is exactly why our headline is measured against Baseline, not against this." |
-| **3:30** | | Anneal tab, seed 42, **3,000** iterations, Start. Cartons fly, curve draws over the shipped 30k curve. | "Our opponent is simulated annealing. It swaps cartons, keeps what shortens the walk, and occasionally accepts a worse move to escape local optima. It only ever sees the training orders. The budget is iterations, not seconds, so seed 42 gives this exact layout on any machine." |
-| 4:00 | | Apply the result. Open the Leaderboard, save as "SA live". | "The result flies in, and it goes on the leaderboard: held-out kilometres, the delta against Baseline, and the seed and commit, so any entry can be re-scored." |
-| **4:15** | J drives, A speaks | Evidence tab. Point at: held-out table, exact vs heuristic share, seed, commit hash, limitations. | (A) "Everything on screen comes from one deterministic simulator. The same code runs in the browser and in our evaluation script, and the README's numbers are pasted from it. Orders up to eleven stops are routed exactly; this line shows how many weren't. And the limitations: the orders are real, the warehouse geometry and the time model are our assumptions, and we only slot the top hundred products." |
-| **4:45** | | QR code / repo URL slide or Evidence footer. | (J) "Repo, live link and dev log are on screen. It runs in any browser, no backend, no keys. The laptop is yours for questions." |
+| **0:00** | J | Race tab: **Start race**. Camera `1` Overview. | "Pickers spend a big part of a shift walking, and where products sit decides how far. This see-through ghost walks the layout the problem statement told us to beat: fast movers nearest the dock. The solid picker walks the layout our optimiser found. Same real orders, same aisles, two layouts." |
+| 0:25 | J | Point at the two counter groups, then at **This race** and **Full held-out**. | "These six orders are the ones where the two layouts differ most, so the gap here is large. The number that counts is underneath: all held-out orders, [about 11 %] less walking. Every metre is measured by replaying orders, not claimed." |
+| **0:50** | A | **Evidence** tab, Data section. Then hover the hottest carton (rank #1, 23084 RABBIT NIGHT LIGHT). | "The orders are real: UCI Online Retail II, a UK gift retailer, November 2011. We removed cancellations, returns and non-product codes, and kept the 100 busiest products. This is the busiest one: [487] picks in the month." |
+| **1:15** | A | **Replay** tab (the hero order), `2` Follow camera, `Space`. Then top bar routing **Exact → S-shape**, `Space` again. | "One real invoice. The picker leaves the dock, walks the aisles, never through a rack, stops eight seconds per line and comes back. The route is the exact shortest tour, solved with Held–Karp. Now the S-shape route a human picker usually walks: more metres. That gap is routing. The rest of the demo is slotting." Switch back to **Exact**. |
+| **2:00** | J | **Slot** tab → **Start from Baseline**. Cartons fly. `3` Top camera. | "This is the brief's Baseline. The KPI card has two columns: train, the first half of November, and held-out, the second half. Layouts are built on train and scored on held-out, which no layout has seen." |
+| 2:20 | J | The rehearsed swap: click **23301 KEEP CALM kneeling pad** (A2 · left · bay 2), then the carton at **A3 · left · bay 3**, next to the other kneeling pad (23300). KPI headline turns green. | "Baseline ranks products one at a time. It never asks what is bought together. These two kneeling pads sit in the same orders, but Baseline puts them far apart. One swap, and held-out walking drops [about 0.2 %]." |
+| **2:45** | J | Point at the KPI table: Original and Baseline rows. | "That is also why Baseline barely beats plain catalogue order, [3.9 %]. Catalogue order sorts by product code, so families like these sit together by accident." |
+| **3:05** | A | **Slot** → **Start from Baseline**. **Anneal** tab: seed 42, **3k**, **Run**. Cartons fly; the curve draws towards the dashed **shipped SA 30k** line. When it stops: **Apply result to my layout**. | "Our opponent is simulated annealing. It swaps two products, re-routes only the orders that change, keeps improvements, and early on sometimes accepts a worse move to escape a dead end. It only sees training orders, and it learns which products travel together. The budget is iterations, not seconds, so seed 42 gives this exact layout on any machine. The dashed line is the full 30,000-iteration run from our evaluation script." |
+| 3:50 | A | Leaderboard (if mounted): type a name, **Save my layout**. | "It goes on the leaderboard with its held-out kilometres, the change against Baseline, the seed and the commit, so anyone can re-score it." |
+| **4:05** | J | **Evidence** tab: routing honesty, in-sample vs held-out, reproducibility, then **Assumptions & limitations**. | "One simulator makes every number: the same code runs in this browser and in `npm run eval`, and the README copies its output by script. Orders up to eleven stops are routed exactly; this line shows how many were not. Limitations: the orders are real, but the warehouse geometry and the time model are our assumptions, and we slot the top 100 products only." |
+| **4:40** | A | Closing slide with the QR code and links. | "Static site, no server, no keys. The repo, live link and dev log are here. Questions welcome." |
+
+Target finish: 4:50. Hard limit: 5:00.
 
 ## Picks for the demo
 
-Chosen from the data. **Confirm them in rehearsal with the real engine before the demo**, because a beat that shows the wrong colour is worse than skipping it.
+Computed with the real engine (`web/src/sim/` at engine commit `7aba833`) from the Baseline layout. Re-check at rehearsal, because any engine change can move them.
 
-- **Affinity swap (2:05).** From the train orders, the most co-ordered pairs include the Scandinavian trio:
-  - `22579` WOODEN TREE CHRISTMAS SCANDINAVIAN, a low pick rank, ordered with:
-  - `22578` WOODEN STAR CHRISTMAS SCANDINAVIAN and `22577` WOODEN HEART CHRISTMAS SCANDINAVIAN, both high pick rank.
-
-  Under Baseline, swap the Tree with whatever sits in the slot next to the Star or Heart. Keep it only if **both** train and held-out improve. Next candidates to try: `22086` / `22910` (paper chain kits), `23300` / `23301` (kneeling pads), `23343` / `23344` (jumbo bags).
-- **Hero order (0:50).** A held-out invoice with 8–10 distinct products spread over at least three aisles under the current layout, so the path is interesting but still exact (≤ 11 stops). First held-out candidates: invoices `576650`, `576654`, `576655`, `576657`, `576658` (16 Nov). Pick the one with the best-looking route in Follow camera.
+- **Rehearsed swap (2:20).** `23301` GARDENERS KNEELING PAD KEEP CALM (rank #11, slot 21 = A2 · left · bay 2) ↔ the carton in slot 42 (A3 · left · bay 3, `84946` ANTIQUE SILVER T-LIGHT GLASS). That puts it beside `23300` GARDENERS KNEELING PAD CUP OF TEA (slot 43). Effect vs Baseline: train −425 m, held-out −254 m. Backup with a similar effect: `22727` ALARM CLOCK BAKELIKE RED (slot 25) ↔ slot 43, beside `22726` ALARM CLOCK BAKELIKE GREEN: train −309 m, held-out −265 m. Keep a swap only if the KPI card shows **both** columns improving.
+- **Hottest carton (0:50).** `23084` RABBIT NIGHT LIGHT, rank #1, sits in slot 0 under Baseline. The hover label shows its picks.
+- **Hero order (1:15).** The Replay tab opens on the first held-out order with 6–9 lines; the **Hero order** button returns to it. Use it.
 
 ## If something goes wrong
 
-| Problem | Do this |
-|---|---|
-| WebGL context lost / black canvas | Reload. Everything is client-side and loads in seconds. If it repeats, switch to the recording. |
-| Anneal is slow on the venue laptop | Lower the iterations to 1,000. The shipped 30k curve is still drawn behind it. |
-| A number looks wrong | Do not improvise. Open Evidence and say "this is the simulator's output; the same numbers are in eval/results.md". |
-| Out of time at 4:15 | Skip to Evidence and read the limitations. Never skip the limitations. |
+| Problem | Do this | Say |
+|---|---|---|
+| KPI shows grey bars (still scoring) | Keep talking; it fills in a second or two | "It re-scores every order in a background thread." |
+| Anneal not finished by 3:45 | **Cancel**: it keeps the best layout so far | "Cancel keeps the best so far; the dashed line is where the full run ends." |
+| Race not finished by 0:45 | Set the speed in the bottom bar to 20× | (nothing) |
+| WebGL context lost / black canvas | Reload. The panels keep working without the 3D view | "Same numbers, the 3D view just restarted." |
+| A number looks wrong | Do not improvise. Open Evidence | "This is the simulator's output; the same numbers are in eval/results.md." |
+| Deployed URL down / no Wi-Fi | `npm run preview` on the laptop, or play the recording | "Same build, served locally." |
+| Out of time at 4:05 | Go straight to the limitations | Never skip the limitations. |
 
 ## Recording the ≤ 5-minute demo (submission item)
 
-1. Rehearse the run above once end to end with a timer. It must finish under **5:00**, the hard limit in the rules. Aim for 4:40.
+1. Rehearse the run once end to end with a timer. It must finish under **5:00**, the hard limit in the rules. Aim for 4:50.
 2. Record at 1920 × 1080, 30 fps, with the microphone on. Use OBS (Display Capture + Mic) or the Windows Game Bar (`Win + Alt + R`).
 3. Record the deployed site, not localhost, so the URL bar matches what judges will open.
 4. Export to MP4 (H.264 + AAC). Check the length, and that audio is present throughout.
-5. Save it as `Ghostwalk_demo.mp4` and keep it off git (it is large). Upload it where the submission form asks, and keep a local copy as the on-stage fallback.
+5. Save it as `Ghostwalk_demo.mp4` and keep it out of git (it is large). Upload it where the submission form asks, and keep a local copy as the on-stage fallback.
 
 ## 3-minute overview cut (YouTube bonus, #11)
 
-The same run, shortened: 0:00 hook race → 0:20 data in one sentence → 0:35 replay with the S-shape flip → 1:15 Baseline + affinity swap → 1:50 Baseline-vs-You race → 2:15 a 1,000-iteration anneal → 2:40 Evidence and limitations → 2:55 links. Upload as **Public** or **Unlisted** with the title "Ghostwalk: race your old warehouse (NexAI Hack 2026, PS 4.2)", then link it in the README and in both posts.
+The same run, shortened: 0:00 Baseline-vs-SA race → 0:25 data in one sentence → 0:40 replay with the S-shape flip → 1:15 Baseline + kneeling-pad swap → 1:50 why Baseline barely beats catalogue order → 2:10 a 1k anneal → 2:35 Evidence and limitations → 2:55 links. Upload as **Public** or **Unlisted** with the title "Ghostwalk: race your old warehouse (NexAI Hack 2026, PS 4.2)", then link it in the README and in both posts.
