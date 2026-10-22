@@ -206,7 +206,7 @@ export default function Leaderboard({ className = '' }: { className?: string }) 
   return (
     <section
       aria-labelledby="leaderboard-title"
-      className={`w-[22rem] max-w-full rounded-xl border border-white/10 bg-panel/90 p-3 text-xs shadow-lg backdrop-blur ${className}`}
+      className={`w-full rounded-xl border border-white/10 bg-panel/90 p-3 text-xs shadow-lg backdrop-blur ${className}`}
     >
       <header className="mb-2 flex items-baseline justify-between gap-2">
         <h2 id="leaderboard-title" className="text-sm font-semibold tracking-wide">

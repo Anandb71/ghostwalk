@@ -64,7 +64,7 @@ For an order, the engine collects the distinct bay nodes of its SKUs' slots (the
 
 - **Exact (Held–Karp).** `dp[mask][j]` is the shortest walk that leaves the dock, visits exactly the stops in `mask` and ends at stop `j`. The tour cost is `min_j dp[full][j] + d(j, dock)`. With *n* stops this takes O(2ⁿ · n²) time and O(2ⁿ · n) memory: for n = 11 that is 2,048 × 11 states and about 250k transitions, under a millisecond. The DP lives in one flat `Float32Array`. Exact routing is used when n ≤ 11 (12 nodes including the dock).
 - **Heuristic (n > 11).** Nearest-neighbour construction, then 2-opt until no improving move is left. These orders are flagged `exact: false`, and the Evidence panel reports their count and share of metres.
-- **S-shape (ablation).** The traversal policy from Hall (1993), close to what a human picker does. Enter every aisle that holds a pick and walk it end to end; on the last aisle, return. It shows how much of the gain comes from routing rather than slotting. By construction it can never be shorter than the exact tour (a unit test checks this on every order).
+- **S-shape (ablation).** The traversal policy from Hall (1993), close to what a human picker does. Enter every aisle that holds a pick and walk it end to end; on the last aisle, return. It shows how much of the gain comes from routing rather than slotting. By construction it can never be shorter than the exact tour (a unit test checks this on every train order).
 
 `tourPath()` turns the stop order into a node path through `pathBetween`, so consecutive nodes are always graph edges (another unit test checks this). Time per order is `metres / 1.2 + 8 × lines`.
 
@@ -104,11 +104,11 @@ sequenceDiagram
   W-->>S: SCORE_RESULT(train)
   W-->>S: SCORE_RESULT(holdout)
   Note over S: KPI card, leaderboard and race read the new scores
-  S->>W: ANNEAL(seed, iterations, startFrom = Baseline, set = train)
+  S->>W: ANNEAL(seed, iterations, startFrom = current layout, set = train)
   loop every reportEvery iterations
     W-->>S: PROGRESS(iter, T, current, best, swap)
   end
-  opt player presses Stop
+  opt player presses Cancel
     S->>W: CANCEL(reqId)
   end
   W-->>S: ANNEAL_DONE(best layout, curve, cancelled)
@@ -120,11 +120,11 @@ sequenceDiagram
 
 - The scene draws `displayAssignment(state)`: the live SA layout while annealing, otherwise the player's.
 - The picker and ghost move in `useFrame` with refs. Per-frame distance and time go into the mutable `liveCounters` object, which the HUD reads in `requestAnimationFrame`. Nothing per-frame goes through React state.
-- Racks and cartons are `InstancedMesh`es, and labels are drawn only for hovered, selected and top-10 cartons. The budget is ≤ 60 draw calls at 60 fps on an integrated GPU. Bloom is opt-in (High quality).
+- Racks and cartons are `InstancedMesh`es, and 3D labels are drawn only for the hovered and selected cartons (the 2D slot map numbers the top 10). The design budget in BUILD_SPEC is ≤ 60 draw calls at 60 fps on an integrated GPU; it has not been benchmarked. Bloom is opt-in (High quality).
 
 ## Evaluation pipeline
 
-`npm run eval` (from `web/`) runs `eval/run.ts` under `tsx`. It loads `orders.json` and scores Original, Random (42), Baseline and SA on train and held-out, plus the S-shape ablation. It runs SA (seed 42, 30,000 iterations, from Baseline) and 5 more seeds for mean ± sd, and measures milliseconds per full re-score. It writes:
+`npm run eval` (from `web/`) runs `eval/run.ts` under `tsx`. It loads `orders.json` and scores Original, Random (42), Baseline and SA on train and held-out, plus the S-shape ablation. It runs SA (seed 42, 30,000 iterations, from Baseline) and seeds 43–46 for mean ± sd over five seeds (at fewer iterations if the projected time exceeds the runner's time budget; the results file says so), and measures milliseconds per full re-score. It writes:
 
 - `eval/results.md`, the human-readable tables with the commit hash. `scripts/sync-readme.ts` copies them into the README, and the deck builder reads `eval/results.json`.
 - `eval/results.json`, the same numbers, machine-readable.
