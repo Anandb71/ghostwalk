@@ -465,7 +465,7 @@ pres.addSection({ title: 'Solution' })
       ],
       {
         x: cx, y: 1.5, w: cw, h: 5.3,
-        chartColors: [HEX.accent6, HEX.accent1],
+        chartColors: [HEX.lt2, HEX.accent1],
         lineSize: 2, lineDataSymbol: 'none',
         showTitle: true, title: `Train km, seed ${saShipped.seed}, ${fmt(saShipped.iterations)} iterations (from sa_seed42.json)`,
         titleColor: HEX.lt1, titleFontSize: 14, titleFontFace: '+mn-lt',
@@ -557,7 +557,7 @@ pres.addSection({ title: 'Evidence' })
     const tw = W - M - tx
     const cols = heldTable.header.length
     const rows = [
-      heldTable.header.map((h) => ({ text: h, options: { bold: true, color: MUTED, fontSize: 13, fill: { color: HEX.dk2 } } })),
+      heldTable.header.map((h, j) => ({ text: h, options: { bold: true, color: HEX.lt2, fontSize: 13, fill: { color: HEX.dk2 }, align: (j === 0 ? 'left' : 'right') as 'left' | 'right' } })),
       ...heldTable.rows.slice(0, 9).map((r) =>
         r.map((c, j) => ({ text: c, options: { color: /^baseline/i.test(r[0]) ? HEX.accent2 : HEX.lt1, fontSize: 13, bold: j === 0, align: (j === 0 ? 'left' : 'right') as 'left' | 'right' } })),
       ),
