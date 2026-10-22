@@ -2,22 +2,44 @@
 
 **NexAI Hack 2026 · Problem 4.2 · Warehouse Digital Twin: 3D Picking Floor Game**
 
-Ghostwalk is a 3D digital twin of a picking floor that runs in the browser. It replays one real month of orders from UCI Online Retail II (November 2011). You re-slot the cartons, then race a translucent **ghost picker on your old layout** against a solid picker on the new one, over exactly the same orders. To win, you must beat the fast-movers baseline, then a simulated-annealing optimiser. Every number on screen comes from one deterministic simulator and is measured on a **held-out** second half of the month.
+**The problem.** Pickers can spend more of a shift walking than picking, and where each product sits (its *slot*) decides how far they walk. PS 4.2 asks for a browser 3D twin of a picking floor, driven by real orders, where the player re-slots products and the twin shows the walking saved. The gain must be *measured, not claimed*.
+
+**What you see.** A 3D picking floor that replays one real month of orders: 2,362 invoices from UCI Online Retail II, November 2011. A translucent **ghost** picker walks the layout the problem statement tells us to beat, fast movers nearest the dock (**Baseline**). A solid picker walks the layout found by our simulated-annealing optimiser, or your own. Both walk the same orders along the aisles, each with its own distance and time counters. You can swap cartons yourself, and every swap is re-scored in a Web Worker.
+
+**Result.** All layouts are built from orders of 1–15 Nov and scored on **held-out** orders of 16–30 Nov:
+
+<!-- sync:headline -->
+_Headline (held-out = orders 16–30 Nov 2011, never seen by Baseline ranking or SA). Copied from [`eval/results.md`](eval/results.md) by `scripts/sync-readme.ts`._
+
+- **SA vs Baseline, held-out walking distance: −11.1%** (101.67 km → 90.38 km)
+- SA vs Baseline on train (in-sample): −13.6%, so in-sample → held-out shrinkage is 2.5 percentage points
+- Baseline vs Original, held-out: −3.9% (105.75 km → 101.67 km)
+- SA over seeds 42, 43, 44, 45, 46: held-out Δ vs Baseline −10.0% ± 0.9 pp (mean ± sd)
+<!-- /sync:headline -->
 
 | | |
 |---|---|
 | **Live app** | _pending the Vercel deploy (tracked in #7)_ |
 | **Video overview** | _pending (≤ 3 min, tracked in #11)_ |
 | **Dev log** | [DEV_LOG.md](DEV_LOG.md): decisions, AI assistance, experiments, rejected approaches |
-| **Build spec** | [docs/BUILD_SPEC.md](docs/BUILD_SPEC.md) · [docs/architecture.md](docs/architecture.md) · [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md) |
+| **Data** | UCI Online Retail II (Chen, 2019), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); full credit in [Data](#data) |
+| **AI tools** | [Claude Code](https://claude.com/claude-code) (Anthropic), declared in [Tech stack](#tech-stack-and-declared-tools) and [DEV_LOG.md](DEV_LOG.md) |
+| **Docs** | [docs/architecture.md](docs/architecture.md) · [docs/BUILD_SPEC.md](docs/BUILD_SPEC.md) · [docs/MASTER_PLAN.md](docs/MASTER_PLAN.md) |
 
-No backend, no API keys, no cold start: the app is a static Vite site. All scoring runs in a Web Worker on your machine.
+**Run it and check the numbers** (Node.js 20.19+ or 22.12+):
+
+```bash
+cd web
+npm ci
+npm run dev                                 # http://localhost:5173
+npm run test                                # vitest: routing exactness, rack-free paths, determinism, store + worker, leaderboard
+npm run eval                                # same engine in Node -> eval/results.md, the source of every number above
+npx tsx ../scripts/sync-readme.ts --check   # exits 1 if this README differs from eval/results.md
+```
+
+No backend, no API keys, no cold start: the app is a static Vite site, and all scoring runs in a Web Worker on your machine.
 
 ---
-
-## The problem
-
-Pickers can spend more time walking between shelves than picking. Where each product sits (its *slot*) decides how far they walk. PS 4.2 asks for a browser 3D twin of a picking floor, driven by real orders, that turns slotting into a game. The player re-arranges products, and the twin replays the same orders to show how much walking the new layout saves. In the problem statement's words, the improvement must be *measured, not claimed*.
 
 ## What Ghostwalk does
 
@@ -25,8 +47,8 @@ Pickers can spend more time walking between shelves than picking. Where each pro
 |---|---|
 | **Replay** | An order from the month plays back in 3D. The picker leaves the dock, walks the aisles (never through racks) to each slot, pauses for each pick, and returns. Distance and time counters tick as it goes. You can flip the routing between **Exact** (optimal tour) and **S-shape** (what a human picker typically walks). |
 | **Slot** | Click a carton, then another, to swap them, in 3D or on the 2D slot map. The KPI card re-scores your layout on the train *and* held-out orders. **Baseline** puts the fast movers nearest the dock. Undo, and start from Original, Baseline or the SA layout. |
-| **Race** | The ghost (the layout you started from) and the solid picker (your current layout) walk the same held-out orders side by side. Both are labelled on screen, each with its own counters. |
-| **Anneal** | The simulated-annealing opponent runs live in the worker from Baseline: cartons fly as swaps are accepted, and the convergence curve draws itself over the shipped 30,000-iteration run. |
+| **Race** | The ghost (Original, Baseline or SA; by default the layout you started from) and the solid picker (your current layout) walk the same six held-out orders: the ones where the two layouts differ most. Both are labelled on screen, each with its own counters. The panel shows the gap on those six orders and on the full held-out set. |
+| **Anneal** | The simulated-annealing opponent runs live in the worker from your current layout (seed and 1k / 3k / 10k iterations). Cartons fly as swaps are accepted, and the train-km curve draws itself against dashed Baseline and shipped-SA reference lines. The shipped SA layout (seed 42, 30,000 iterations from Baseline) comes from `npm run eval`. |
 | **Evidence** | Data cleaning counts, the held-out table, exact vs heuristic routing share, the policy ablation, ms per re-score, seed and commit hash, assumptions and limitations. |
 | **Heatmap / Leaderboard** | Floor tiles show rack visits. The leaderboard saves your layouts with held-out km, Δ vs Baseline, provenance and commit, and exports them to JSON. |
 
@@ -45,7 +67,7 @@ Pickers can spend more time walking between shelves than picking. Where each pro
 ## How scoring stays honest
 
 - **Held-out split.** Orders from 1–15 Nov 2011 are **train**: the player, the heatmap and the optimiser see them. Orders from 16–30 Nov are **held-out** and are used only for scoring. The headline KPI is the **held-out gain vs Baseline**. The gain vs Original is shown second and labelled as such.
-- **References that are hard to game.** *Original* is catalogue order (SKUs in StockCode order, aisle by aisle: what a warehouse does when nobody slots). *Random (seed 42)* is a second reference row, so no gain depends on a convenient convention. *Baseline* (fast movers nearest the dock, ranked by **train** picks) is the layout to beat.
+- **References that are hard to game.** *Original* is catalogue order (SKUs in StockCode order, aisle by aisle: what a warehouse does when nobody slots). *Random (seed 42)* is a second reference row, so no gain depends on a convenient convention. *Baseline* (fast movers nearest the dock, ranked by **train** picks, ties broken by StockCode) is the layout to beat.
 - **Exact routing, with its limits stated.** Every tour runs on the aisle graph. Orders with ≤ 11 distinct bay stops (12 nodes including the dock) are routed exactly with Held–Karp dynamic programming. Larger orders use nearest-neighbour + 2-opt and are flagged. The Evidence panel prints how many orders, and what share of the metres, were routed exactly.
 - **Deterministic.** The simulator never calls `Math.random` or `Date.now`. The PRNG is mulberry32 with the seed shown in the UI. The annealing budget is counted in **iterations, not seconds**, so the same seed gives the same layout on any machine.
 - **One simulator everywhere.** The worker, the 3D playback and `npm run eval` all import the same `web/src/sim/`. The animation only plays back paths the simulator produced. The README and the deck quote `eval/results.md` and never retype a number.
@@ -53,9 +75,94 @@ Pickers can spend more time walking between shelves than picking. Where each pro
 ## Results
 
 <!-- sync:results -->
-> **Pending:** `eval/results.md` does not exist yet. Run `npm run eval` in `web/`, then
-> `npx tsx ../scripts/sync-readme.ts`. No result number in this README is typed by hand.
+_Copied from [`eval/results.md`](eval/results.md) by `scripts/sync-readme.ts`; only heading levels are changed._
+
+### Ghostwalk evaluation results
+
+Generated by `npm run eval` (`eval/run.ts`, Node v25.2.1) at commit `645629f`.
+Same `web/src/sim` code the app runs in its worker. Every number below is produced by that run; nothing is typed by hand.
+
+#### Headline (held-out = orders 16–30 Nov 2011, never seen by Baseline ranking or SA)
+
+- **SA vs Baseline, held-out walking distance: −11.1%** (101.67 km → 90.38 km)
+- SA vs Baseline on train (in-sample): −13.6%, so in-sample → held-out shrinkage is 2.5 percentage points
+- Baseline vs Original, held-out: −3.9% (105.75 km → 101.67 km)
+- SA over seeds 42, 43, 44, 45, 46: held-out Δ vs Baseline −10.0% ± 0.9 pp (mean ± sd)
+
+#### Layouts, exact routing policy
+
+| Layout | Train km | Held-out km | Train s/order | Held-out s/order | Δ held-out vs Baseline | Δ train vs Baseline |
+|---|---:|---:|---:|---:|---:|---:|
+| Original (catalogue order) | 96.18 | 105.75 | 127.9 | 130.0 | +4.0% | +4.0% |
+| Random (seed 42) | 99.90 | 109.11 | 130.7 | 132.3 | +7.3% | +8.0% |
+| Baseline (fast movers nearest dock) | 92.52 | 101.67 | 125.2 | 127.2 | — | — |
+| SA (seed 42, 30,000 it, from Baseline, train only) | 79.94 | 90.38 | 116.0 | 119.6 | −11.1% | −13.6% |
+
+Time model: seconds = metres / 1.2 m/s + 8 s per order line (declared, synthetic).
+
+#### Ablation: S-shape routing policy (what a human picker does)
+
+| Layout | Train km | Held-out km | Held-out s/order | S-shape vs exact, held-out | Δ held-out vs Baseline (S-shape) |
+|---|---:|---:|---:|---:|---:|
+| Original (catalogue order) | 115.46 | 127.60 | 144.8 | +20.7% | +2.0% |
+| Baseline (fast movers nearest dock) | 112.67 | 125.10 | 143.1 | +23.0% | — |
+| SA (seed 42, 30,000 it, from Baseline, train only) | 96.61 | 109.10 | 132.3 | +20.7% | −12.8% |
+
+SA optimises exact-policy metres; the S-shape rows show whether the gain survives a cruder picker.
+
+#### Routing honesty (full month, exact policy)
+
+Orders with ≤ 11 distinct stops (12 nodes incl. dock) are solved exactly with Held–Karp; larger ones use nearest neighbour + 2-opt (also seeded from the S-shape sequence), flagged per order.
+
+| Layout | Exact orders | Heuristic orders | Share of metres routed exactly |
+|---|---:|---:|---:|
+| Original (catalogue order) | 2025 | 337 | 78.4% |
+| Random (seed 42) | 2027 | 335 | 78.3% |
+| Baseline (fast movers nearest dock) | 2035 | 327 | 77.8% |
+| SA (seed 42, 30,000 it, from Baseline, train only) | 2084 | 278 | 80.3% |
+
+Heuristic quality check (Baseline layout, the 1679 orders with 2–11 stops where both can run): NN + 2-opt matched Held–Karp on 1549 (92.3%); mean excess 0.31%, worst 10.6%.
+
+#### SA across seeds (from Baseline, train only)
+
+**Note:** 5 × 30,000 iterations was projected at 4.6 min on this machine (> 4 min budget), so seeds 43, 44, 45, 46 ran 15,000 iterations each; seed 42 ran 30,000.
+
+| Seed | Iterations | Train km | Held-out km | Δ held-out vs Baseline | Wall time s |
+|---:|---:|---:|---:|---:|---:|
+| 42 | 30,000 | 79.94 | 90.38 | −11.1% | 54.9 |
+| 43 | 15,000 | 80.79 | 91.92 | −9.6% | 31.5 |
+| 44 | 15,000 | 81.44 | 92.11 | −9.4% | 30.9 |
+| 45 | 15,000 | 80.21 | 90.78 | −10.7% | 30.1 |
+| 46 | 15,000 | 80.98 | 92.37 | −9.1% | 33.1 |
+| **mean ± sd** | | 80.67 ± 0.60 | 91.51 ± 0.88 | −10.0% ± 0.9 pp | |
+
+#### Performance (Node, same code as the worker)
+
+| Measure | Value |
+|---|---:|
+| Full-month re-score, 2362 orders, cold route cache (median of 5) | 30.9 ms |
+| Full-month re-score, warm route cache (median of 5) | 1.2 ms |
+| Full-month re-score with paths + pick stops (median of 5) | 34.5 ms |
+| SA iterations per second (seed 42, 30,000 it, incremental + memoised) | 546 |
+| SA wall time (seed 42) | 54.9 s |
+
+#### Dataset
+
+| Item | Value |
+|---|---:|
+| Source | UCI Online Retail II (Chen, 2019), sheet 'Year 2010-2011' (CC BY 4.0) |
+| Month | 2011-11 |
+| Products (top SKUs by order lines) | 100 |
+| Orders (all / train / held-out) | 2362 / 1130 / 1232 |
+| Order lines | 17056 |
+| Raw rows in the source sheet | 541910 |
+| Share of the month's order lines covered by these SKUs | 21.2% |
+| Split rule | orders dated before 2011-11-16 are train; on/after are holdout |
 <!-- /sync:results -->
+
+### Why Baseline barely beats catalogue order
+
+Baseline ranks products one at a time by how often they are picked. It ignores what is picked *together*. In the train orders, 7 of the 8 most co-picked pairs are product families with neighbouring StockCodes, such as the Scandinavian wooden heart, star and tree (22577, 22578, 22579) and two gardener's kneeling pads (23300, 23301). Catalogue order sorts by StockCode, so it keeps 6 of those 8 pairs within 5.2 m of each other by accident. Baseline puts 6 of the 8 pairs 10 to 20 m apart. The annealer scores whole orders, so it learns the pairs: the shipped SA layout has all 8 within 1.2 m. These distances are walking metres on the aisle graph, computed with `web/src/sim/` from `orders.json`.
 
 ## Architecture
 
@@ -90,8 +197,8 @@ flowchart TB
 
 - **`data/prepare.py`** (offline, Python + pandas): cleans the workbook and writes `orders.json`.
 - **`web/src/sim/`** (pure TypeScript, no DOM or React): the warehouse graph, routing, `simulate()`, the layouts and the annealer.
-- **`web/src/worker/`**: runs the engine off the main thread so the 3D scene stays at 60 fps.
-- **`web/src/scene/`**: React Three Fiber. Instanced racks and cartons (≤ 60 draw calls), the picker and ghost rigs, and the self-drawing route.
+- **`web/src/worker/`**: runs the engine off the main thread, so the 3D scene keeps animating while layouts are scored.
+- **`web/src/scene/`**: React Three Fiber. Instanced racks, cartons and heat tiles, the picker and ghost rigs, and the self-drawing route.
 - **`web/src/ui/` + `store.ts`**: the panels, HUD and app state.
 - **`eval/run.ts`**: the same engine headless in Node. It writes `eval/results.md` and the shipped SA layout.
 
@@ -189,7 +296,7 @@ Checks and evaluation, all from `web/`:
 
 ```bash
 npm run typecheck # tsc, strict
-npm run test      # vitest: routing exactness, graph-only paths, determinism, baseline, leaderboard
+npm run test      # vitest: routing exactness, graph-only paths, determinism, baseline, store + worker, leaderboard
 npm run build     # production build into web/dist
 npm run eval      # same engine in Node -> eval/results.md, eval/results.json, web/public/layouts/sa_seed42.json
 ```
