@@ -1,6 +1,7 @@
 // Chooses which pickers are on the floor:
 //  - race (mode === 'race' && race.active): ghost walks race.ghostPlans, solid walks race.solidPlans,
-//    back to back, same speed (replay.speed); each writes liveCounters.ghost / liveCounters.solid.
+//    back to back, same speed (replay.speed), paused/resumed with replay.playing (the store sets it
+//    on startRace and clears it when both finish); each writes liveCounters.ghost / liveCounters.solid.
 //  - otherwise (replay / idle): one solid picker walks replay.plan when replay.playing and writes
 //    liveCounters.replay; with no plan it stands at the dock.
 import { useMemo } from 'react'
@@ -50,7 +51,7 @@ function RaceWalkers() {
         plans={ghostPlans}
         runKey={runId}
         counters={liveCounters.ghost}
-        isPlaying={always}
+        isPlaying={replayPlaying}
         getSpeed={replaySpeed}
         onFinished={onGhostFinished}
         label={ghostLabel}
@@ -62,7 +63,7 @@ function RaceWalkers() {
         plans={solidPlans}
         runKey={runId}
         counters={liveCounters.solid}
-        isPlaying={always}
+        isPlaying={replayPlaying}
         getSpeed={replaySpeed}
         onFinished={onSolidFinished}
         follow

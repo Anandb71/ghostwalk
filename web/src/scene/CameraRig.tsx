@@ -25,17 +25,20 @@ export default function CameraRig() {
   const camera = useStore((s) => s.camera)
   const presetRef = useRef<CameraPreset>(camera)
   presetRef.current = camera
+  const first = useRef(true)
 
   useEffect(() => {
     const c = ref.current
     if (!c) return
+    const animate = !first.current // snap on mount, tween on every later preset change
+    first.current = false
     if (camera === 'follow') {
       c.smoothTime = 0.35
       return
     }
     c.smoothTime = 0.55
     const { pos, target } = CAMERA_PRESETS[camera]
-    void c.setLookAt(pos[0], pos[1], pos[2], target[0], target[1], target[2], true)
+    void c.setLookAt(pos[0], pos[1], pos[2], target[0], target[1], target[2], animate)
   }, [camera])
 
   useFrame(() => {
