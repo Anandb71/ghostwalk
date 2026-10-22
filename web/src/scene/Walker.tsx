@@ -6,7 +6,7 @@ import { useCallback, useLayoutEffect, useMemo, useRef, useState } from 'react'
 import { useFrame } from '@react-three/fiber'
 import type * as THREE from 'three'
 import type { OrderScore } from '../sim/types'
-import Picker, { type PickerVariant } from './Picker'
+import Picker, { newPickerDrive, type PickerVariant } from './Picker'
 import RouteLine, {
   growRouteLine,
   newWalkState,
@@ -50,6 +50,9 @@ export default function Walker(props: WalkerProps) {
   const tl = useMemo(() => buildTimeline(plans, lineY), [plans, lineY])
   const [w] = useState(newWalkState)
   const ringStart = useMemo(() => new Float64Array(Math.max(1, tl.stopCount)), [tl])
+  // rig drive (walking, pick target, lines in the tote) and the lines picked so far in this order
+  const [drive] = useState(newPickerDrive)
+  const [carry] = useState(() => ({ base: 0, order: -1 }))
 
   const rootRef = useRef<THREE.Group>(null)
   const bodyRef = useRef<THREE.Group>(null)
@@ -69,6 +72,10 @@ export default function Walker(props: WalkerProps) {
     w.ringFrom = 0
     w.bob = 0
     w.wasPlaying = p.isPlaying()
+    carry.base = 0
+    carry.order = -1
+    drive.moving = drive.picking = false
+    drive.carried = 0
     // face the first move
     for (let i = 0; i < tl.n; i++) {
       if (tl.stop[i] < 0) {
@@ -95,7 +102,7 @@ export default function Walker(props: WalkerProps) {
       followTarget.z = tl.startZ
       followTarget.heading = w.heading
     }
-  }, [tl, w, ringStart])
+  }, [tl, w, ringStart, carry, drive])
 
   useLayoutEffect(() => {
     reset()
@@ -114,12 +121,22 @@ export default function Walker(props: WalkerProps) {
     if (playing && !w.finished && tl.n > 0) w.t += dt * speed
 
     while (w.cursor < tl.n && w.t >= tl.t0[w.cursor] + tl.dur[w.cursor]) {
+      const ord = tl.order[w.cursor]
+      if (ord !== carry.order) {
+        carry.order = ord // a new order starts at the dock with an empty tote
+        carry.base = 0
+      }
       const st = tl.stop[w.cursor]
       if (st >= 0) {
         ringStart[st] = now
         w.stopsDone++
+        carry.base += tl.lines[w.cursor]
       }
       w.cursor++
+    }
+    if (w.cursor < tl.n && tl.order[w.cursor] !== carry.order) {
+      carry.order = tl.order[w.cursor]
+      carry.base = 0
     }
 
     let x: number
@@ -128,6 +145,7 @@ export default function Walker(props: WalkerProps) {
     let moving = false
     let pickF = -1
     let pickLines = 0
+    let stopIdx = 0
     if (tl.n === 0) {
       x = tl.startX
       z = tl.startZ
@@ -153,6 +171,7 @@ export default function Walker(props: WalkerProps) {
       } else {
         pickF = f
         pickLines = tl.lines[c]
+        stopIdx = tl.stop[c]
       }
     }
 
@@ -175,6 +194,13 @@ export default function Walker(props: WalkerProps) {
         body.rotation.x = 0
       }
     }
+    // the rig reads these in Picker's useFrame (priority 0, after this one). The timeline has no
+    // SKU or side per stop, so the rack face the worker reaches for alternates with the stop index.
+    drive.moving = moving && playing
+    drive.picking = pickF >= 0
+    drive.targetX = x + (stopIdx & 1 ? 1.55 : -1.55)
+    drive.targetZ = z
+    drive.carried = w.finished ? 0 : carry.base + (pickF >= 0 ? Math.min(pickLines, Math.floor(pickF * pickLines + 0.35)) : 0)
     if (p.follow) {
       followTarget.x = x
       followTarget.z = z
@@ -206,7 +232,7 @@ export default function Walker(props: WalkerProps) {
   const color = variant === 'ghost' ? PALETTE.ghost : PALETTE.solid
   return (
     <group>
-      <Picker variant={variant} rootRef={rootRef} bodyRef={bodyRef} label={label} labelY={labelY} />
+      <Picker variant={variant} rootRef={rootRef} bodyRef={bodyRef} label={label} labelY={labelY} drive={drive} />
       {tl.segCount > 0 ? <RouteLine key={tl.id} lineRef={lineRef} points={tl.points} color={color} /> : null}
       <StopRings key={`rings-${tl.id}`} meshRef={ringRef} count={Math.max(1, tl.stopCount)} color={color} />
     </group>
