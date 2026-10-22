@@ -1,0 +1,101 @@
+
+===== instructions PAGE 1 =====
+NexAI Hack 2026 — Participant Instructions 
+1. Schedule and Problem Selection 
+• 
+Start: Begin development after the inaugural orientation at 6:00 PM on 21 October 2026. 
+• 
+Deadline: Final submission at around 3:30 PM onwards on 22 October 2026. 
+• 
+Progress reviews: Teams may be asked to demonstrate their progress during the event. 
+• 
+Problem selection: Choose one of the 12 shared problem statements. Multiple teams may 
+select the same problem. 
+• 
+Core requirements: Complete the three mandatory requirements in your selected problem 
+statement before attempting stretch goals. 
+2. Preparation Before the Event 
+You may review datasets, explore the technology stack, develop ideas, and plan your solution 
+beforehand. Solution development must begin after kickoff. 
+• 
+Shortlist one or two problems and review their Data & Resources sections. 
+• 
+Create a GitHub account, a deployment account, and an API key if required. 
+• 
+Install your preferred development tools and test the required libraries. 
+• 
+Download only the specified dataset or subset to minimise campus bandwidth usage. 
+3. Development and Code Requirements 
+• 
+Maintain a public GitHub repository from kickoff and commit progress at least hourly. 
+• 
+Commit history will be reviewed. A single bulk submission or evidence of solution 
+development before kickoff may trigger a disqualification review. 
+• 
+Framework starters, open-source libraries, and AI coding tools are permitted. Declare the 
+tools and dependencies in the README. 
+• 
+Store credentials in environment variables and provide a .env.example file. Rotate any 
+exposed key immediately. 
+• 
+Every team member must be able to explain the submitted solution, including AI-generated 
+code.  
+• 
+A DEV_LOG.md is encouraged to record key decisions, AI assistance, experiments, and 
+rejected approaches. 
+4. Deployment 
+• 
+Provide a publicly accessible application URL by the submission deadline. 
+• 
+Free hosting platforms such as Vercel, Render, Netlify, Cloudflare, or Hugging Face 
+Spaces are acceptable. 
+• 
+If model size prevents deployment on a free tier, demonstrate the application locally to the 
+judges and provide a YouTube demo linked in the README. 
+
+===== instructions PAGE 2 =====
+5. Data and Responsible AI 
+• 
+Use the recommended datasets, suitably licensed public datasets, or clearly identified 
+synthetic data. 
+• 
+Do not use scraped personal data or private company data. 
+• 
+Evaluate models on a held-out split, report metrics honestly, and state limitations. 
+• 
+Fabricated results will result in disqualification. 
+6. README Requirements 
+Include: 
+• 
+Problem statement and solution overview 
+• 
+Architecture diagram and technology stack 
+• 
+Setup and execution instructions ;   
+• 
+Deployment URL or approved local-demo details 
+• 
+Dataset attribution and licence 
+• 
+Team member details 
+• 
+Link to DEV_LOG.md, if maintained 
+7. Public Posts 
+Before submission, publish posts on LinkedIn and X describing the problem and your solution. 
+Include a screenshot or short clip, repository URL, and deployment URL where available. 
+Use #NEXAI2026, tag your teammates, and include the official conclave handles once announced. 
+8. Final Submission 
+Submit the following by 3:00 PM onwards on 22 October 2026: 
+1. Public GitHub repository URL 
+2. Live deployment URL, or local-demo details where the deployment exception applies 
+3. Demo recording of up to 5 minutes & Pitch deck in PowerPoint format 
+4. LinkedIn and X post URLs 
+Bonus: A public or unlisted YouTube overview of up to 3 minutes, linked in the README and 
+public posts, and completion of problem-specific stretch goals. 
+9. Demonstration and Evaluation 
+Final demonstrations will follow code freeze; the detailed schedule will be announced. Each team 
+will receive 5 minutes for the demonstration and 3 minutes for Q&A. 
+Demonstrate the deployed application wherever possible. Recorded demonstrations serve as a 
+fallback, subject to the deployment exception above. 
+ 
+ 
