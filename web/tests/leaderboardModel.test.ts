@@ -23,7 +23,7 @@ import {
   saveEntries,
   type BoardRow,
   type EntryInput,
-} from '../src/ui/leaderboard'
+} from '../src/ui/leaderboardModel'
 
 const identity = () => Array.from({ length: 100 }, (_, i) => i)
 const swapped = (a: number[], i: number, j: number) => {

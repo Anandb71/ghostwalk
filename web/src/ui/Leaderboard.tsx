@@ -1,5 +1,5 @@
 // Leaderboard of player layouts (stretch S3, issue #8). Self-contained panel: reads the store,
-// keeps its own entries in localStorage (see ./leaderboard.ts) and never writes to the store.
+// keeps its own entries in localStorage (see ./leaderboardModel.ts) and never writes to the store.
 import { useEffect, useMemo, useRef, useState } from 'react'
 import { useStore } from '../store'
 import type { Assignment, Policy, ScoreResult } from '../sim'
@@ -27,7 +27,7 @@ import {
   saveName,
   type BoardRow,
   type LeaderboardEntry,
-} from './leaderboard'
+} from './leaderboardModel'
 
 const COMMIT: string = import.meta.env.VITE_COMMIT || 'dev'
 const POLICY_LABEL: Record<Policy, string> = { exact: 'Exact routing', sshape: 'S-shape routing' }
