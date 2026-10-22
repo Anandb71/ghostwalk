@@ -102,7 +102,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 ## 17. Why does Baseline beat catalogue order by so little?
 
-**Answer.** Baseline ranks products one at a time by how often they are picked. It ignores what is bought together. In the train orders, 7 of the 8 most co-picked pairs are product families with neighbouring StockCodes: the Scandinavian wooden heart, star and tree (22577, 22578, 22579), two kneeling pads (23300, 23301), two alarm clocks (22726, 22727) and others. Catalogue order sorts by StockCode, so it keeps 6 of those 8 pairs within 5.2 m by accident. Baseline puts 6 of the 8 pairs 10 to 20 m apart. The annealer scores whole orders, so it learns the pairs: the shipped SA layout has all 8 within 1.2 m.
+**Answer.** Baseline ranks products one at a time by how often they are picked. It ignores what is bought together. In the train orders, 7 of the 8 most co-picked pairs are product families with neighbouring StockCodes: the Scandinavian wooden heart, star and tree (22577, 22578, 22579), two kneeling pads (23300, 23301), two alarm clocks (22726, 22727) and others. Catalogue order sorts by StockCode, so it keeps 6 of those 8 pairs within 5.2 m by accident. Baseline puts 6 of the 8 pairs 10 to 20 m apart. The annealer scores whole orders, so it learns the pairs: the shipped SA layout has all 8 within 2.4 m.
 
 **Show.** KPI card: the Original and Baseline rows. In Slot, hover the two kneeling pads under Baseline, then after **Apply SA layout**.
 
