@@ -60,30 +60,32 @@ Pickers can spend more time walking between shelves than picking. Where each pro
 ## Architecture
 
 ```mermaid
-flowchart LR
-  subgraph offline["Offline · Python"]
-    XLSX[("UCI Online Retail II<br/>online_retail_II.xlsx")] --> PREP["data/prepare.py<br/>pandas"]
-  end
-  PREP --> JSON[("web/public/data/orders.json<br/>100 SKUs · orders · train / held-out")]
+flowchart TB
+  XLSX[("UCI Online Retail II<br/>online_retail_II.xlsx")] -->|"offline · Python + pandas"| PREP["data/prepare.py<br/>clean · top 100 SKUs · train / held-out split"]
+  PREP --> JSON[("web/public/data/orders.json")]
 
-  subgraph browser["Browser · static site on Vercel"]
+  subgraph browser["Browser · static site"]
+    direction TB
+    STORE["store.ts · zustand"]
     subgraph worker["Web Worker"]
       SW["worker/sim.worker.ts"] --> ENG["sim/ engine<br/>aisle graph · Held–Karp · NN + 2-opt · S-shape<br/>simulate · layouts · simulated annealing"]
     end
-    STORE["store.ts<br/>zustand"] <-->|"SCORE · ANNEAL · PROGRESS<br/>worker/protocol.ts"| SW
-    STORE --> SCENE["scene/ · React Three Fiber<br/>racks · cartons · picker + ghost · route line · heat"]
-    STORE --> UI["ui/<br/>KPI card · slot map · race · anneal curve<br/>evidence · leaderboard"]
+    STORE <-->|"SCORE · ANNEAL · PROGRESS<br/>worker/protocol.ts"| SW
+    STORE --> SCENE["scene/ · React Three Fiber<br/>racks · cartons · picker + ghost · route · heat"]
+    STORE --> UI["ui/<br/>KPI · slot map · race · anneal curve<br/>evidence · leaderboard"]
   end
-  JSON --> STORE
 
   subgraph node["Node · npm run eval"]
+    direction TB
     EVAL["eval/run.ts"] --> ENG2["same sim/ engine"]
+    ENG2 --> RES[("eval/results.md<br/>results.json")]
+    ENG2 --> SAJ[("web/public/layouts/<br/>sa_seed42.json")]
   end
+
+  JSON --> STORE
   JSON --> EVAL
-  ENG2 --> RES[("eval/results.md · results.json")]
-  ENG2 --> SAJ[("web/public/layouts/sa_seed42.json")]
-  SAJ --> STORE
-  RES --> DOCS["README · pitch deck"]
+  SAJ -->|"shipped SA layout"| STORE
+  RES -->|"scripts/sync-readme.ts"| DOCS["README · pitch deck"]
 ```
 
 - **`data/prepare.py`** (offline, Python + pandas): cleans the workbook and writes `orders.json`.
