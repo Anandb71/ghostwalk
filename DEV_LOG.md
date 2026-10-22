@@ -15,7 +15,7 @@ Decisions, AI assistance, experiments and rejected approaches, in time order (IS
 - Work split in GitHub issues #1–#12 (Anand ~70%, Junaid ~30%).
 - Scaffold: Vite + React 19 + TypeScript + React Three Fiber + zustand + Tailwind. The shared contracts (`sim/types.ts`, `sim/layout.ts` geometry, `worker/protocol.ts`, `store.ts`) were written first, so the engine, scene and UI can be built in parallel without drifting apart.
 
-## 22 Oct 10:12–10:51 — engine, worker, scene, UI, tests and eval (Anand, #1–#6; branch `claude/progress-check-1daf6d`)
+## 22 Oct 10:12–10:51 — engine, worker, scene, UI, tests and eval (Anand; branch `claude/progress-check-1daf6d`)
 This work is on the engine branch, not yet on `main`. Times are the commit times.
 - 10:12: store actions: load, debounced re-scoring, swaps with undo, replay, race, anneal (`a028d70`).
 - 10:17–10:19: engine. mulberry32, dataset indexing, stop-set keys, Held–Karp / NN + 2-opt / S-shape routing (`06a1c7a`). Memoised `simulate` and `planOrder`, the catalogue, random and Baseline layouts, the incremental annealer and the race order picker (`08048a0`). The worker runs annealing in chunks that can be cancelled, behind a promise-based client (`c98baf7`).
