@@ -22,7 +22,7 @@ _Headline (held-out = orders 16–30 Nov 2011, never seen by Baseline ranking or
 
 | | |
 |---|---|
-| **Live app** | _pending the Vercel deploy (tracked in #7)_ |
+| **Live app** | **https://ghostwalk-tau.vercel.app** (static Vercel deploy of the Floor Lab scene build) |
 | **Video overview** | _pending (≤ 3 min, tracked in #11)_ |
 | **Dev log** | [DEV_LOG.md](DEV_LOG.md): decisions, AI assistance, experiments, rejected approaches |
 | **Data** | UCI Online Retail II (Chen, 2019), [CC BY 4.0](https://creativecommons.org/licenses/by/4.0/); full credit in [Data](#data) |
