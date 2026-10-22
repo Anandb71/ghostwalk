@@ -1,6 +1,6 @@
 # Demo script: 5 minutes, live
 
-This follows the beats in [BUILD_SPEC §9](../BUILD_SPEC.md). **A** = Anand drives the laptop, **J** = Junaid speaks, and we swap roles for the Evidence beat so both of us are heard. Spoken lines are written out in full: about 620 words, which leaves room for the actions at a calm pace. Do not read out numbers from this sheet. Read them off the screen, because the screen is the evidence.
+This follows the beats in [BUILD_SPEC §9](../BUILD_SPEC.md). **A** = Anand drives the laptop, **J** = Junaid speaks, and we swap roles for the Evidence beat so both of us are heard. Spoken lines are written out in full: about 470 words, roughly 3.5 minutes at a calm pace, which leaves time for the actions. Do not read out numbers from this sheet. Read them off the screen, because the screen is the evidence.
 
 Keyboard: `Space` play/pause · `1` `2` `3` camera Overview / Follow / Top · `R` race · `Esc` clear selection.
 
