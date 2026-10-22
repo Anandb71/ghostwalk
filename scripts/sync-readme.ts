@@ -1,4 +1,5 @@
 // Regenerates the generated blocks of README.md, so no number in it is typed by hand:
+//   <!-- sync:headline --> the bullet list under "## Headline" in eval/results.md, for the README's first screen
 //   <!-- sync:results -->  eval/results.md as is, headings nested one level under the README's "Results"
 //   <!-- sync:layout -->   declared warehouse layout, from the engine's web/src/sim/layout.ts
 //   <!-- sync:data -->     dataset counts, from web/public/data/orders.json (meta written by data/prepare.py)
@@ -75,6 +76,21 @@ function resultsBlock(): string {
   return `_Copied from [\`eval/results.md\`](eval/results.md) by \`scripts/sync-readme.ts\`; only heading levels are changed._\n\n${body}`
 }
 
+function headlineBlock(): string {
+  const file = path('eval/results.md')
+  if (!existsSync(file)) return '> **Pending:** run `npm run eval` in `web/`, then `npx tsx ../scripts/sync-readme.ts`.'
+  const lines = readFileSync(file, 'utf8').replace(/\r\n/g, '\n').split('\n')
+  const start = lines.findIndex((l) => l.startsWith('## Headline'))
+  if (start < 0) return '> **Pending:** `eval/results.md` has no "## Headline" section.'
+  const bullets: string[] = []
+  for (const l of lines.slice(start + 1)) {
+    if (l.startsWith('## ')) break
+    if (l.startsWith('- ')) bullets.push(l)
+  }
+  const title = lines[start].slice(3)
+  return [`_${title}. Copied from [\`eval/results.md\`](eval/results.md) by \`scripts/sync-readme.ts\`._`, '', ...bullets].join('\n')
+}
+
 function layoutBlock(): string {
   return table([
     ['Pick zone', `${AISLES} aisles × ${SIDES} rack sides × ${BAYS} bays = **${SLOTS} slots**, one SKU per slot`],
@@ -137,7 +153,7 @@ function stackBlock(): string {
   )
 }
 
-const BLOCKS: Record<string, () => string> = { results: resultsBlock, layout: layoutBlock, data: dataBlock, stack: stackBlock }
+const BLOCKS: Record<string, () => string> = { headline: headlineBlock, results: resultsBlock, layout: layoutBlock, data: dataBlock, stack: stackBlock }
 
 const readmePath = path('README.md')
 const original = readFileSync(readmePath, 'utf8')
