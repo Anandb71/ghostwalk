@@ -1,0 +1,219 @@
+{
+  "commit": "7aba833",
+  "simDirty": false,
+  "node": "v25.2.1",
+  "dataset": {
+    "products": 100,
+    "orders": 2362,
+    "train": 1130,
+    "holdout": 1232,
+    "lines": 17056
+  },
+  "layouts": [
+    {
+      "key": "original",
+      "name": "Original (catalogue order)",
+      "policy": "exact",
+      "trainM": 96180.39999999994,
+      "holdoutM": 105754.40000000007,
+      "trainSPerOrder": 127.94896755162243,
+      "holdoutSPerOrder": 129.98755411255434,
+      "deltaTrainVsBaseline": 0.043166840924768524,
+      "deltaHoldoutVsBaseline": 0.039784481063438015,
+      "deltaHoldoutVsOriginal": 0
+    },
+    {
+      "key": "random",
+      "name": "Random (seed 42)",
+      "policy": "exact",
+      "trainM": 99902.80000000019,
+      "holdoutM": 109106.39999999992,
+      "trainSPerOrder": 130.69410029498516,
+      "holdoutSPerOrder": 132.2548701298702,
+      "deltaTrainVsBaseline": 0.08353976772335336,
+      "deltaHoldoutVsBaseline": 0.07274157391748926,
+      "deltaHoldoutVsOriginal": 0.03169608073044583
+    },
+    {
+      "key": "baseline",
+      "name": "Baseline (fast movers nearest dock)",
+      "policy": "exact",
+      "trainM": 92200.39999999992,
+      "holdoutM": 101707.99999999993,
+      "trainSPerOrder": 125.0138643067847,
+      "holdoutSPerOrder": 127.25054112554126,
+      "deltaTrainVsBaseline": 0,
+      "deltaHoldoutVsBaseline": 0,
+      "deltaHoldoutVsOriginal": -0.03826223778868909
+    },
+    {
+      "key": "sa",
+      "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
+      "policy": "exact",
+      "trainM": 79914,
+      "holdoutM": 90395.99999999999,
+      "trainSPerOrder": 115.95309734513286,
+      "holdoutSPerOrder": 119.59902597402574,
+      "deltaTrainVsBaseline": -0.13325755636634906,
+      "deltaHoldoutVsBaseline": -0.11122035631415372,
+      "deltaHoldoutVsOriginal": -0.14522705438260797
+    }
+  ],
+  "sshape": [
+    {
+      "key": "original",
+      "name": "Original (catalogue order)",
+      "policy": "sshape",
+      "trainM": 115464.40000000011,
+      "holdoutM": 127596,
+      "trainSPerOrder": 142.17020648967548,
+      "holdoutSPerOrder": 144.76136363636346,
+      "deltaTrainVsBaseline": 0.03193459360521733,
+      "deltaHoldoutVsBaseline": 0.029441663681514907,
+      "deltaHoldoutVsOriginal": 0
+    },
+    {
+      "key": "baseline",
+      "name": "Baseline (fast movers nearest dock)",
+      "policy": "sshape",
+      "trainM": 111891.20000000001,
+      "holdoutM": 123946.80000000002,
+      "trainSPerOrder": 139.53510324483776,
+      "holdoutSPerOrder": 142.2930194805193,
+      "deltaTrainVsBaseline": 0,
+      "deltaHoldoutVsBaseline": 0,
+      "deltaHoldoutVsOriginal": -0.028599642622025634
+    },
+    {
+      "key": "sa",
+      "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
+      "policy": "sshape",
+      "trainM": 96448.80000000003,
+      "holdoutM": 109326.40000000008,
+      "trainSPerOrder": 128.14690265486723,
+      "holdoutSPerOrder": 132.40367965367938,
+      "deltaTrainVsBaseline": -0.1380126408511123,
+      "deltaHoldoutVsBaseline": -0.11795705899627851,
+      "deltaHoldoutVsOriginal": -0.1431831718862654
+    }
+  ],
+  "routing": [
+    {
+      "key": "original",
+      "name": "Original (catalogue order)",
+      "exactOrders": 2025,
+      "heuristicOrders": 337,
+      "exactShareM": 0.7844928164932433
+    },
+    {
+      "key": "random",
+      "name": "Random (seed 42)",
+      "exactOrders": 2027,
+      "heuristicOrders": 335,
+      "exactShareM": 0.7831483016058605
+    },
+    {
+      "key": "baseline",
+      "name": "Baseline (fast movers nearest dock)",
+      "exactOrders": 2041,
+      "heuristicOrders": 321,
+      "exactShareM": 0.7819733441150557
+    },
+    {
+      "key": "sa",
+      "name": "SA (seed 42, 30,000 it, from Baseline, train only)",
+      "exactOrders": 2094,
+      "heuristicOrders": 268,
+      "exactShareM": 0.8091386295578626
+    }
+  ],
+  "heuristicQuality": {
+    "orders": 1684,
+    "optimal": 1563,
+    "meanGap": 0.0031062273182137757,
+    "maxGap": 0.11881188118811914
+  },
+  "heuristicInUse": {
+    "orders": 172,
+    "optimal": 101,
+    "meanGap": 0.0160961703732628,
+    "maxGap": 0.09302325581395343,
+    "metresGap": 0.016268330853797863,
+    "skippedOverMaxStops": 149,
+    "maxStopsSeen": 48,
+    "offlineMaxStops": 16
+  },
+  "perf": {
+    "fullRescoreOrders": 2362,
+    "coldMedianMs": 46.989199999996345,
+    "warmMedianMs": 1.2013000000006286,
+    "withPathsMedianMs": 52.99439999999595,
+    "saIterationsPerSecond": 455.54504668810574,
+    "saElapsedMs": 65855.1777,
+    "saLiveIterations": 3000,
+    "saLiveColdIterationsPerSecond": 288.77718858888835
+  },
+  "sa": {
+    "seed": 42,
+    "iterations": 30000,
+    "startFrom": "baseline",
+    "set": "train",
+    "startM": 92200.39999999992,
+    "bestM": 79914,
+    "holdoutM": 90395.99999999999
+  },
+  "seeds": {
+    "rows": [
+      {
+        "seed": 42,
+        "iterations": 30000,
+        "trainM": 79914,
+        "holdoutM": 90395.99999999999,
+        "elapsedMs": 65855.1777
+      },
+      {
+        "seed": 43,
+        "iterations": 30000,
+        "trainM": 79939.99999999993,
+        "holdoutM": 90957.5999999999,
+        "elapsedMs": 64994.70420000005
+      },
+      {
+        "seed": 44,
+        "iterations": 30000,
+        "trainM": 80790.39999999989,
+        "holdoutM": 92349.20000000004,
+        "elapsedMs": 72970.30900000004
+      },
+      {
+        "seed": 45,
+        "iterations": 30000,
+        "trainM": 81269.19999999982,
+        "holdoutM": 93257.99999999972,
+        "elapsedMs": 82880.4092
+      },
+      {
+        "seed": 46,
+        "iterations": 30000,
+        "trainM": 79855.99999999985,
+        "holdoutM": 90597.59999999987,
+        "elapsedMs": 99737.6765
+      }
+    ],
+    "summary": {
+      "train": {
+        "mean": 80353.9199999999,
+        "sd": 640.51463059008
+      },
+      "holdout": {
+        "mean": 91511.6799999999,
+        "sd": 1238.7859024060078
+      },
+      "holdoutDeltaVsBaseline": {
+        "mean": -0.10025091438234975,
+        "sd": 0.012179827569178535
+      }
+    },
+    "extraIterations": 30000
+  }
+}
