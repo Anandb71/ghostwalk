@@ -2,7 +2,7 @@
 
 Drafts for the LinkedIn and X posts the rules require (§7), plus every URL the final submission form asks for (§8). **Nothing here has been posted.** Post from your own accounts after filling the `{{…}}` placeholders.
 
-Rules §7 checklist for each post: problem + solution ✔ · screenshot or short clip · repository URL ✔ · deployment URL (`{{LIVE_URL}}`) · **#NEXAI2026** ✔ · tag teammates (`{{TEAMMATE}}`) · tag the official conclave handles (`{{OFFICIAL_HANDLES}}`, once announced).
+Rules §7 checklist for each post: problem + solution ✔ · screenshot or short clip · repository URL ✔ · deployment URL (`https://ghostwalk-tau.vercel.app`) · **#NEXAI2026** ✔ · tag teammates (`{{TEAMMATE}}`) · tag the official conclave handles (`{{OFFICIAL_HANDLES}}`, once announced).
 
 The result numbers below (11.1 %, 101.71 → 90.40 km, 10.0 % ± 1.2 pp, 2,362 orders) are from `eval/results.md` generated at engine commit `7aba833`. **Re-check them against the final `eval/results.md` before posting** (checklist in [pitch/README.md](pitch/README.md)).
 
@@ -10,7 +10,7 @@ The result numbers below (11.1 %, 101.71 → 90.40 km, 10.0 % ± 1.2 pp, 2,362 o
 
 | Placeholder | Where it comes from |
 |---|---|
-| `{{LIVE_URL}}` | The Vercel URL (#7). Also put it in `docs/pitch/deck/links.json` and the README. |
+| `https://ghostwalk-tau.vercel.app` | The Vercel URL (#7). Also put it in `docs/pitch/deck/links.json` and the README. |
 | `{{VIDEO_URL}}` | The ≤ 3-min YouTube overview, if we make it (bonus). Otherwise delete that line. |
 | `{{TEAMMATE}}` | LinkedIn: type `@` and pick the teammate's profile. X: their handle. Junaid tags Anand; Anand tags Junaid. |
 | `{{OFFICIAL_HANDLES}}` | The NexAI conclave handles, once the organisers announce them. |
@@ -36,7 +36,7 @@ The result numbers below (11.1 %, 101.71 → 90.40 km, 10.0 % ± 1.2 pp, 2,362 o
 >
 > No backend and no API keys: it is a static site, and all scoring runs in a Web Worker.
 >
-> Try it: {{LIVE_URL}}
+> Try it: https://ghostwalk-tau.vercel.app
 > Code: https://github.com/Anandb71/ghostwalk
 > 3-min overview: {{VIDEO_URL}}
 >
@@ -51,7 +51,7 @@ X's limit is 280 weighted characters: each link counts as 23. With a 16-characte
 
 > Ghostwalk: a 3D warehouse twin replaying 2,362 real orders. A ghost picker walks the fast-movers baseline, a solid one our annealed layout. On held-out orders: 11.1% less walking.
 >
-> Play {{LIVE_URL}}
+> Play https://ghostwalk-tau.vercel.app
 > Code https://github.com/Anandb71/ghostwalk
 >
 > #NEXAI2026 {{TEAMMATE}}
@@ -73,7 +73,7 @@ Fill these in as they come in. This is the one place to copy them from on submis
 | # | Item | URL / file | Status |
 |---|---|---|---|
 | 1 | Public GitHub repository | https://github.com/Anandb71/ghostwalk | ✔ public (checked 22 Oct) |
-| 2 | Live deployment | {{LIVE_URL}} | waiting on #7 |
+| 2 | Live deployment | https://ghostwalk-tau.vercel.app | live |
 | 3a | Demo recording (≤ 5 min) | `Ghostwalk_demo.mp4`, upload where the form asks; keep it out of git | to record (see `docs/pitch/demo_script.md`) |
 | 3b | Pitch deck (PowerPoint) | [`docs/pitch/Ghostwalk_pitch.pptx`](pitch/Ghostwalk_pitch.pptx) | rebuild after the final eval and screenshots |
 | 4a | LinkedIn post | {{LINKEDIN_POST_URL}} | to post |
@@ -82,7 +82,7 @@ Fill these in as they come in. This is the one place to copy them from on submis
 
 ## Order of operations on the day
 
-1. Deploy is live → put `{{LIVE_URL}}` into the README, `links.json` and this file.
+1. Deploy is live → put `https://ghostwalk-tau.vercel.app` into the README, `links.json` and this file.
 2. `npm run eval` → `npx tsx ../scripts/sync-readme.ts` (README results) → capture the three screenshots → `npm run build -- --strict` in `docs/pitch/deck` (deck).
 3. Re-check the hand-typed numbers (checklist in `docs/pitch/README.md`).
 4. Record the demo (and the optional overview, then upload it to YouTube).
