@@ -428,7 +428,7 @@ export const useStore = create<GhostState>()((set, get) => {
       loadPromise = (async () => {
         try {
           set({ status: 'loading', error: null })
-          const base = import.meta.env.BASE_URL
+          const base = import.meta.env?.BASE_URL ?? '/' // env is undefined under plain Node (smoke scripts)
           const res = await fetch(base + 'data/orders.json')
           if (!res.ok) throw new Error(`could not load data/orders.json (HTTP ${res.status})`)
           const raw = (await res.json()) as Dataset
