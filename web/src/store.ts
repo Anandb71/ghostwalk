@@ -61,6 +61,10 @@ export interface ShippedSA {
   trainM: number
   holdoutM: number
   curve: [number, number, number][]
+  /** Commit `npm run eval` ran at (the numbers in eval/results.md come from the same run). */
+  commit?: string
+  startFrom?: string
+  startTrainM?: number
 }
 
 export interface AnnealState {
@@ -69,6 +73,11 @@ export interface AnnealState {
   iterations: number
   progress: AnnealProgress[] // downsampled curve for the chart
   live: Assignment | null // current SA layout while running (scene shows this instead of `assignment`)
+  /**
+   * Finished SA layout kept on screen (anneal mode only) until the player applies or discards it, so
+   * the result "flies in" instead of the cartons snapping back to the player's layout.
+   */
+  preview: Assignment | null
   lastSwap: [number, number] | null // sku indices, for the fly fx
   result: AnnealResult | null
   shipped: ShippedSA | null // public/layouts/sa_seed42.json
@@ -122,7 +131,7 @@ export interface GhostState {
   race: RaceState
   anneal: AnnealState
 
-  /** First held-out order with 6–9 lines; the replay starts here. */
+  /** First train order with 6–9 lines; the replay starts here (the player only sees train data). */
   heroOrderIdx: number
   /** Evidence panel: Baseline and You scored on held-out with both routing policies. */
   ablation: AblationState
@@ -154,13 +163,18 @@ export interface GhostState {
   startAnneal: (iterations: number, seed: number) => void
   cancelAnneal: () => void
   applyAnnealResult: () => void
+  /** Drop the finished SA layout from the screen (the result stays available to apply). */
+  discardAnnealPreview: () => void
 
   runAblation: () => void
+
+  /** Demo hook (`?demo`): You = Baseline, then race the Original ghost against it at 20×. */
+  startDemo: () => void
 }
 
 /** Layout the scene should draw right now. */
 export const displayAssignment = (s: GhostState): Assignment | null =>
-  s.anneal.running && s.anneal.live ? s.anneal.live : s.assignment
+  s.anneal.running && s.anneal.live ? s.anneal.live : s.anneal.preview ? s.anneal.preview : s.assignment
 
 export const LAYOUT_LABEL: Record<LayoutKey, string> = {
   original: 'Original',
@@ -209,11 +223,21 @@ const isPermutation = (arr: unknown, n: number): arr is number[] => {
 const errMsg = (e: unknown): string => (e instanceof Error ? e.message : String(e))
 
 /**
- * Swaps are refused while the optimiser runs (the scene shows its live layout, not yours) and while a
- * race is being prepared or walked (the solid picker's plans were made for the layout at the start).
+ * Swaps are refused while the optimiser runs or its finished layout is on screen (the scene shows the
+ * SA layout, not yours) and while a race is being prepared or walked (the solid picker's plans were
+ * made for the layout at the start). After a race both runners are home, swaps re-arm the race.
  */
 export const slottingLocked = (s: GhostState): boolean =>
-  s.anneal.running || s.race.preparing || (s.race.active && !(s.race.finished.ghost && s.race.finished.solid))
+  s.anneal.running ||
+  s.anneal.preview !== null ||
+  s.race.preparing ||
+  (s.race.active && !(s.race.finished.ghost && s.race.finished.solid))
+
+/** Label for the solid picker: the stored layout it equals, else "You". */
+function solidLabelFor(s: GhostState, player: Assignment): string {
+  const twin = (['baseline', 'sa', 'original'] as StartKey[]).find((k) => sameLayout(s.layouts[k], player))
+  return twin ? LAYOUT_LABEL[twin] : 'You'
+}
 
 function safePlan(data: PreparedData, orderIdx: number, assignment: Assignment, policy: Policy): OrderScore | null {
   const order = data.orders[orderIdx]
@@ -226,12 +250,13 @@ function safePlan(data: PreparedData, orderIdx: number, assignment: Assignment, 
   }
 }
 
+/** Hero replay order: the first TRAIN order with 6–9 lines (held-out orders are for scoring and races). */
 function pickHeroOrder(data: PreparedData): number {
-  for (const idx of data.holdout) {
+  for (const idx of data.train) {
     const n = data.orders[idx]?.skus.length ?? 0
     if (n >= 6 && n <= 9) return idx
   }
-  return data.holdout[0] ?? 0
+  return data.train[0] ?? 0
 }
 
 function resetCounters(which: 'replay' | 'race') {
@@ -332,16 +357,41 @@ export const useStore = create<GhostState>()((set, get) => {
     set((st) => ({ replay: { ...st.replay, plan, runId: st.replay.runId + 1 } }))
   }
 
-  /** Install a new player layout (always a fresh array), re-plan the replay, schedule a re-score. */
+  /**
+   * Install a new player layout (always a fresh array), re-plan the replay, schedule a re-score.
+   * Anything computed for the previous layout is invalidated: the SA preview leaves the screen, the
+   * Evidence ablation rows ("You") are cleared, and a finished race is re-armed with solid plans and
+   * a label for the new layout (Play walks it again; the ghost layout and the orders stay the same).
+   */
   const commitPlayer = (next: Assignment, undo: Assignment[], extra: Partial<GhostState> = {}) => {
+    ablationSeq++
     set((st) => ({
       layouts: { ...st.layouts, player: next },
       assignment: next,
       undo,
       selectedSlot: null,
+      ablation: { status: 'idle', rows: [], error: null },
+      anneal: st.anneal.preview ? { ...st.anneal, preview: null } : st.anneal,
       ...extra,
     }))
     replanReplay()
+    const r = get().race
+    if (r.active && r.ghostAssignment && r.orderIdxs.length) {
+      const plans = planRace(r.orderIdxs, r.ghostAssignment)
+      resetCounters('race')
+      set((st) => ({
+        race: plans
+          ? {
+              ...st.race,
+              ...plans,
+              solidLabel: solidLabelFor(st, next),
+              runId: st.race.runId + 1,
+              finished: { ghost: false, solid: false },
+            }
+          : { ...st.race, active: false },
+        replay: { ...st.replay, playing: false },
+      }))
+    }
     scheduleRescore()
   }
 
@@ -417,6 +467,7 @@ export const useStore = create<GhostState>()((set, get) => {
       iterations: 3000,
       progress: [],
       live: null,
+      preview: null,
       lastSwap: null,
       result: null,
       shipped: null,
@@ -489,6 +540,13 @@ export const useStore = create<GhostState>()((set, get) => {
         } catch (e) {
           console.error('load failed', e)
           loadPromise = null // allow a retry
+          // A worker that failed to load or crashed during INIT never answers again: retry with a fresh one.
+          try {
+            client?.dispose()
+          } catch {
+            /* already gone */
+          }
+          client = null
           set({ status: 'error', error: errMsg(e) })
         }
       })()
@@ -503,6 +561,8 @@ export const useStore = create<GhostState>()((set, get) => {
       const patch: Partial<GhostState> = { mode: m }
       if (s.mode === 'race' && (s.race.active || s.race.preparing)) Object.assign(patch, stopRaceState())
       if (m !== 'slot') patch.selectedSlot = null
+      // the finished SA layout is only shown on the Anneal panel (its Apply / Discard buttons live there)
+      if (s.anneal.preview) patch.anneal = { ...s.anneal, preview: null }
       set(patch)
     },
 
@@ -590,7 +650,14 @@ export const useStore = create<GhostState>()((set, get) => {
     // ---- replay -------------------------------------------------------------------------------
 
     play: () => {
-      const s = get()
+      let s = get()
+      // While SA runs the cartons show its live layout, so a picker walking your layout would stop at
+      // the wrong bays. A finished SA layout on screen goes away first (the result stays in the panel).
+      if (s.anneal.running) return
+      if (s.anneal.preview) {
+        set((st) => ({ anneal: { ...st.anneal, preview: null } }))
+        s = get()
+      }
       if (s.race.active) {
         const done = s.race.finished.ghost && s.race.finished.solid
         if (done) resetCounters('race')
@@ -634,6 +701,8 @@ export const useStore = create<GhostState>()((set, get) => {
     startRace: (ghost) => {
       const s = get()
       if (s.status !== 'ready' || !s.data || !s.assignment) return
+      // the solid picker walks your layout; while SA runs the cartons show the optimiser's instead
+      if (s.anneal.running) return
       const player = s.assignment
       const want: StartKey = ghost ?? s.startedFrom
       const order: StartKey[] = [want, 'original', 'baseline', 'sa']
@@ -642,12 +711,12 @@ export const useStore = create<GhostState>()((set, get) => {
       const ghostLayout = s.layouts[g]
       if (!ghostLayout) return
       const ghostAssignment = copy(ghostLayout)
-      const twin = (['baseline', 'sa', 'original'] as StartKey[]).find((k) => sameLayout(s.layouts[k], player))
-      const solidLabel = twin ? LAYOUT_LABEL[twin] : 'You'
+      const solidLabel = solidLabelFor(s, player)
       const seq = ++raceSeq
       set((st) => ({
         mode: 'race',
         selectedSlot: null,
+        anneal: st.anneal.preview ? { ...st.anneal, preview: null } : st.anneal,
         race: {
           ...st.race,
           active: false,
@@ -720,8 +789,12 @@ export const useStore = create<GhostState>()((set, get) => {
       const reportEvery = Math.max(10, Math.floor(iters / 150))
       const reqSeq = ++annealSeq
       const startedAt = performance.now()
+      // pickers stop: their routes are planned on your layout, the cartons are about to show SA's
+      const raceStop = s.race.active || s.race.preparing ? stopRaceState() : {}
       set((st) => ({
+        ...raceStop,
         selectedSlot: null,
+        replay: { ...st.replay, playing: false },
         anneal: {
           ...st.anneal,
           running: true,
@@ -729,6 +802,7 @@ export const useStore = create<GhostState>()((set, get) => {
           iterations: iters,
           progress: [],
           live: copy(startFrom),
+          preview: null,
           lastSwap: null,
           result: null,
           startedAt,
@@ -760,7 +834,7 @@ export const useStore = create<GhostState>()((set, get) => {
       try {
         handle = client.anneal({ seed: sd, iterations: iters, startFrom, set: 'train', reportEvery }, onProgress)
       } catch (e) {
-        set((st) => ({ anneal: { ...st.anneal, running: false, live: null, error: errMsg(e) } }))
+        set((st) => ({ anneal: { ...st.anneal, running: false, live: null, preview: null, error: errMsg(e) } }))
         return
       }
       annealHandle = handle
@@ -774,6 +848,9 @@ export const useStore = create<GhostState>()((set, get) => {
               ...st.anneal,
               running: false,
               live: null,
+              // Keep the result on the floor (best-so-far, so a few cartons fly from `current` to `best`)
+              // until Apply / Discard. Only on the Anneal panel, where those buttons are.
+              preview: st.mode === 'anneal' ? copy(result.best) : null,
               result,
               itersPerSec: secs > 0 && result.iterations ? result.iterations / secs : st.anneal.itersPerSec,
             },
@@ -787,7 +864,7 @@ export const useStore = create<GhostState>()((set, get) => {
         (e) => {
           if (reqSeq !== annealSeq) return
           annealHandle = null
-          set((st) => ({ anneal: { ...st.anneal, running: false, live: null, error: errMsg(e) } }))
+          set((st) => ({ anneal: { ...st.anneal, running: false, live: null, preview: null, error: errMsg(e) } }))
         },
       )
     },
@@ -801,7 +878,11 @@ export const useStore = create<GhostState>()((set, get) => {
       const s = get()
       const r = s.anneal.result
       if (!r || s.anneal.running) return
-      commitPlayer(copy(r.best), pushUndo(s.assignment))
+      commitPlayer(copy(r.best), pushUndo(s.assignment)) // also clears the preview
+    },
+
+    discardAnnealPreview: () => {
+      if (get().anneal.preview) set((st) => ({ anneal: { ...st.anneal, preview: null } }))
     },
 
     // ---- evidence -----------------------------------------------------------------------------
@@ -830,6 +911,17 @@ export const useStore = create<GhostState>()((set, get) => {
           set({ ablation: { status: 'error', rows: [], error: errMsg(e) } })
         }
       })()
+    },
+
+    // ---- demo ---------------------------------------------------------------------------------
+
+    startDemo: () => {
+      const s = get()
+      if (s.status !== 'ready' || !s.layouts.baseline || !s.layouts.original || s.anneal.running) return
+      if (s.policy !== 'exact') get().setPolicy('exact')
+      get().resetTo('baseline') // You = Baseline, so the ghost below is the old catalogue warehouse
+      get().setSpeed(20)
+      get().startRace('original')
     },
   }
 })

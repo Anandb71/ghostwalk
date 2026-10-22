@@ -5,8 +5,8 @@
 import { readFileSync } from 'node:fs'
 import { fileURLToPath } from 'node:url'
 import { beforeAll, describe, expect, it, vi } from 'vitest'
-import { isEdge, isPermutation, ordersFor, simulate, type Assignment, type OrderScore } from '../src/sim'
-import type { useStore as UseStore, GhostState } from '../src/store'
+import { isEdge, isPermutation, ordersFor, planOrder, simulate, type Assignment, type OrderScore } from '../src/sim'
+import type { useStore as UseStore, GhostState, displayAssignment as DisplayAssignment } from '../src/store'
 
 type Listener = ((e: { data: unknown }) => void) | null
 
@@ -57,6 +57,7 @@ const allScored = (s: GhostState) =>
   (['original', 'random', 'baseline', 'sa', 'player'] as const).every((k) => s.scores[k].train && s.scores[k].holdout) && !s.scoring
 
 let useStore: typeof UseStore
+let displayAssignment: typeof DisplayAssignment
 const S = () => useStore.getState()
 
 beforeAll(async () => {
@@ -64,7 +65,7 @@ beforeAll(async () => {
   vi.stubGlobal('Worker', FakeWorker)
   vi.stubGlobal('fetch', fakeFetch)
   await import('../src/worker/sim.worker')
-  ;({ useStore } = await import('../src/store'))
+  ;({ useStore, displayAssignment } = await import('../src/store'))
 })
 
 describe('store + worker integration', () => {
@@ -77,7 +78,7 @@ describe('store + worker integration', () => {
     expect(s.anneal.shipped?.iterations).toBe(30000)
     expect(s.assignment).toBe(s.layouts.player)
     expect(s.replay.orderIdx).toBe(s.heroOrderIdx)
-    expect(s.data!.orders[s.heroOrderIdx].split).toBe('holdout')
+    expect(s.data!.orders[s.heroOrderIdx].split).toBe('train') // the player only sees train orders
     expect(s.replay.plan && edgesOnly(s.replay.plan)).toBe(true)
   })
 
@@ -160,13 +161,31 @@ describe('store + worker integration', () => {
     expect(S().replay.playing).toBe(true)
     S().raceFinished('solid')
     expect(S().replay.playing).toBe(false)
+    // a swap after the finish re-arms the race for the new layout instead of replaying stale plans
+    const ghostPlans = S().race.ghostPlans
+    S().swapSlots(0, 99)
+    const r2 = S().race
+    expect(r2.active).toBe(true)
+    expect(r2.solidLabel).toBe('You')
+    expect(r2.finished).toEqual({ ghost: false, solid: false })
+    expect(r2.ghostPlans.map((q) => q.m)).toEqual(ghostPlans.map((q) => q.m))
+    const st = S()
+    r2.orderIdxs.forEach((idx, i) => expect(r2.solidPlans[i].m).toBeCloseTo(planOrder(st.data!.orders[idx], st.assignment!, 'exact').m, 9))
+    S().undoSwap()
+    expect(S().race.solidLabel).toBe('Baseline')
     S().setMode('slot')
     expect(S().race.active).toBe(false)
   })
 
   it('anneal streams live layouts, finishes, and its result can be applied', async () => {
+    S().setMode('anneal')
     const start = S().assignment
     S().startAnneal(300, 7)
+    // no picker walks your layout while the cartons show the optimiser's
+    S().play()
+    expect(S().replay.playing).toBe(false)
+    S().startRace('original')
+    expect(S().race.preparing || S().race.active).toBe(false)
     expect(S().anneal.running).toBe(true)
     expect(same(S().anneal.live, start)).toBe(true)
     await until(() => !S().anneal.running, 'anneal finish')
@@ -176,10 +195,18 @@ describe('store + worker integration', () => {
     expect(a.progress.length).toBeGreaterThan(3)
     expect(a.result!.iterations).toBe(300)
     expect(a.result!.bestM).toBeLessThanOrEqual(a.result!.startM)
+    // the result stays on the floor until Apply / Discard, and swaps wait for that decision
+    expect(same(a.preview, a.result!.best)).toBe(true)
+    expect(displayAssignment(S())).toBe(a.preview)
+    const mine = S().assignment
+    S().swapSlots(4, 40)
+    expect(S().assignment).toBe(mine)
     const undo0 = S().undo.length
     S().applyAnnealResult()
     expect(same(S().assignment, a.result!.best)).toBe(true)
     expect(S().undo.length).toBe(undo0 + 1)
+    expect(S().anneal.preview).toBeNull()
+    expect(displayAssignment(S())).toBe(S().assignment)
   })
 
   it('anneal cancel returns the best-so-far', async () => {
@@ -196,5 +223,19 @@ describe('store + worker integration', () => {
     const r = S().anneal.result!
     expect(r.iterations).toBeLessThan(200_000)
     expect(isPermutation(r.best)).toBe(true)
+    S().discardAnnealPreview()
+    expect(S().anneal.preview).toBeNull()
+  })
+
+  it('demo hook: You = Baseline, Original ghost, 20x', async () => {
+    S().startDemo()
+    await until(() => S().race.active, 'demo race start')
+    const { race, replay, startedFrom } = S()
+    expect(startedFrom).toBe('baseline')
+    expect(race.ghostKey).toBe('original')
+    expect(race.ghostLabel).toBe('Original')
+    expect(race.solidLabel).toBe('Baseline')
+    expect(replay.speed).toBe(20)
+    expect(replay.playing).toBe(true)
   })
 })
