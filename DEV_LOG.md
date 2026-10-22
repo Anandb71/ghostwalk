@@ -32,6 +32,13 @@ Decisions, AI assistance, experiments and rejected approaches, in time order (IS
 - Both scripts are TypeScript run with `tsx` from `web/`, so they import `sim/layout.ts` directly rather than re-declaring constants.
 - The architecture diagram started as a left-to-right Mermaid flowchart. Rendered at GitHub's width, its edges crossed and the subgraph titles were clipped. Switched to top-to-bottom: data, then eval, then browser. Both Mermaid diagrams in `docs/architecture.md` were render-checked with Mermaid 11 before committing.
 
+## 22 Oct 10:30–11:00 — pitch deck, demo script, Q&A, posts (Junaid, #10, #11)
+- The deck (`docs/pitch/Ghostwalk_pitch.pptx`) is **generated**, not hand-made. `docs/pitch/deck/build-deck.ts` (pptxgenjs, in its own package so `web/` is untouched) imports the geometry from `sim/layout.ts`, reads the data counts from `orders.json`, copies the results table from `eval/results.md` and plots the SA curve from `sa_seed42.json`. The one computed figure, SA vs Baseline on held-out, is derived from that copied table. Missing inputs render as "Pending" frames, and `--strict` fails the build while any remain.
+- QA: every slide was rendered with PowerPoint itself (COM export to PNG) and inspected, and the file passes the OOXML validator. Fixed from the renders: the subtitle ran under the floor plan; pptxgenjs silently drops ellipses on slide layouts, so the ghost/solid motif is now a PNG; arrows cut through labels on the architecture slide; numbers broke from their units across lines.
+- The results-table and convergence-chart paths were tested once against throwaway sample files, deleted straight after, so the chart XML is known to open in PowerPoint before the real numbers arrive.
+- Demo script: the "affinity swap" beat uses the most co-ordered train pairs. The Scandinavian wooden Tree is a low pick rank but ordered with the Star and Heart, both high, so Baseline parks it far from them. It is marked to be confirmed with the real engine at rehearsal.
+- Posts: drafts only, posted by us by hand. The X post was cut from 282 to 259 X-weighted characters (links count 23, emoji 2). The first draft was over the limit.
+
 ## AI assistance
 Claude Code (Anthropic) for research, design, and code generation, with multi-agent workflows for parallel module builds and review. Every module is reviewed and explained by the team.
 - #8–#11 (Junaid): the leaderboard model, panel and tests, `scripts/sync-readme.ts`, `scripts/floorplan.ts`, the README, `docs/architecture.md` and the pitch material were drafted with Claude Code, then checked in the browser and against the spec before committing.
