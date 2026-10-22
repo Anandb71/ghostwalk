@@ -13,7 +13,7 @@ export type Assignment = Uint8Array
 export interface Product {
   sku: string
   desc: string
-  rank: number // 1 = most picked in the month
+  rank: number // 1 = most picked in the month (includes held-out picks: never show it to the player, use trainRanks())
   picks: number
   picksTrain: number
   picksHoldout: number

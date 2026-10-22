@@ -1,5 +1,6 @@
 // The 100 cartons: ONE InstancedMesh (1 draw call) placed at slotPosition(displayAssignment[sku]),
-// coloured by product rank (1 = hot orange ... 100 = cool blue). Whenever the displayed assignment
+// coloured by TRAIN pick rank (sim.trainRanks: 1–15 Nov only, 1 = hot orange ... 100 = cool blue;
+// the month-wide Product.rank includes held-out picks and is never shown). Whenever the displayed assignment
 // changes (swap, Baseline/SA apply, live SA progress) each moved carton fly-lerps to its new slot
 // in 300 ms with an ease-out arc. An invisible, enlarged twin mesh shares the instance matrices and
 // takes the raycasts: hover -> store.setHover(slot), click -> store.selectSlot(slot) (the store
@@ -9,6 +10,7 @@ import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
 import { SLOTS, slotPosition, slotSide } from '../sim/layout'
+import { trainRanks } from '../sim/data'
 import { displayAssignment, useStore, type GhostState } from '../store'
 import { PALETTE, rankColor } from './shared'
 
@@ -63,18 +65,25 @@ export default function Cartons() {
     const mesh = meshRef.current
     const hit = hitRef.current
     if (!mesh || !hit) return
+    // StrictMode re-runs this effect with the same `fly`: forget earlier placements so the follow
+    // effect below places (and shows) every carton again instead of seeing "nothing changed".
+    fly.placed = false
+    fly.flying = false
+    fly.slots.fill(-1)
+    fly.start.fill(-1)
     if (!mesh.instanceColor) mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(N * 3).fill(1), 3)
     hit.instanceMatrix = mesh.instanceMatrix
     hit.count = 0
     mesh.visible = false
-  }, [])
+  }, [fly])
 
-  // colours by product rank
+  // colours by train pick rank (never the month-wide rank: that includes held-out picks)
   useLayoutEffect(() => {
     const mesh = meshRef.current
     if (!mesh || !products) return
+    const ranks = trainRanks(products)
     const c = new THREE.Color()
-    for (let i = 0; i < N; i++) mesh.setColorAt(i, rankColor(products[i]?.rank ?? N, c))
+    for (let i = 0; i < N; i++) mesh.setColorAt(i, rankColor(ranks[i] || N, c))
     if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
   }, [products])
 
@@ -234,6 +243,7 @@ function CartonMarkers() {
   const hoverSku = useStore((s) => skuAt(s, s.hoverSlot))
   const selectedSku = useStore((s) => skuAt(s, s.selectedSlot))
   const products = useStore((s) => s.data?.products ?? null)
+  const ranks = useMemo(() => (products ? trainRanks(products) : null), [products])
   const haloRef = useRef<THREE.Mesh>(null)
 
   useFrame((state) => {
@@ -271,8 +281,8 @@ function CartonMarkers() {
               <span style={{ opacity: 0.55 }}> · </span>
               <span>{hover.p?.desc}</span>
               <span style={{ opacity: 0.55 }}> · </span>
-              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hover.p?.picks ?? 0} picks</span>
-              <span style={{ opacity: 0.55 }}> · #{hover.p?.rank}</span>
+              <span style={{ fontVariantNumeric: 'tabular-nums' }}>{hover.p?.picksTrain ?? 0} train picks</span>
+              <span style={{ opacity: 0.55 }}> · #{ranks ? ranks[hoverSku] : '—'}</span>
             </div>
           </Html>
         </group>

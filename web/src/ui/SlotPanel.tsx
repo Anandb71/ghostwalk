@@ -1,4 +1,4 @@
-import { DOCK, dist, slotAisle, slotBay, slotNode, slotSide } from '../sim'
+import { DOCK, dist, slotAisle, slotBay, slotNode, slotSide, trainRanks } from '../sim'
 import { LAYOUT_LABEL, displayAssignment, slotToSku, useStore } from '../store'
 import { heatColor } from './heat'
 import { Button, Panel } from './primitives'
@@ -10,13 +10,14 @@ function SlotInfo({ slot, tag }: { slot: number; tag: string }) {
   if (!data || !assignment) return null
   const sku = slotToSku(assignment)[slot]
   const p = sku >= 0 ? data.products[sku] : null
+  const rank = sku >= 0 ? trainRanks(data.products)[sku] : 0
   const where = `A${slotAisle(slot) + 1} · ${slotSide(slot) === 0 ? 'left' : 'right'} · bay ${slotBay(slot) + 1}`
   return (
     <div className="flex items-center gap-2 text-[11px]">
       <span className="w-14 shrink-0 text-[10px] uppercase tracking-[0.12em] text-white/40">{tag}</span>
-      {p && <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: heatColor(p.rank) }} />}
-      <span className="min-w-0 flex-1 truncate text-white/85" title={p?.desc}>
-        {p ? `#${p.rank} ${p.desc}` : 'empty'}
+      {p && <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: heatColor(rank) }} />}
+      <span className="min-w-0 flex-1 truncate text-white/85" title={p ? `${p.desc} · ${p.picksTrain} train picks` : undefined}>
+        {p ? `#${rank} ${p.desc}` : 'empty'}
       </span>
       <span className="tabular shrink-0 text-white/45">
         {where} · {Math.round(dist(DOCK, slotNode(slot)))} m
@@ -42,8 +43,8 @@ export default function SlotPanel() {
       right={<span className="text-[10px] text-white/40">started from {LAYOUT_LABEL[startedFrom]}</span>}
     >
       <p className="mb-2 text-[11px] leading-snug text-white/55">
-        Click a carton, then another: they swap and both months re-score. Colour = pick rank (hot = picked most, by train
-        orders). Numbers mark the top 10.
+        Click a carton, then another: they swap and both halves of the month re-score. Colour = pick rank on train orders
+        only (1–15 Nov; hot = picked most). Numbers mark the train top 10.
       </p>
       <div className="rounded-lg border border-white/[0.06] bg-black/25 p-1.5">
         <SlotMap interactive={!annealing} />

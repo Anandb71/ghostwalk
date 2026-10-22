@@ -11,6 +11,7 @@ import {
   SIDES,
   slotId,
   slotPosition,
+  trainRanks,
   type Product,
 } from '../sim'
 import { displayAssignment, slotToSku, useStore } from '../store'
@@ -66,6 +67,8 @@ export default function SlotMap({ interactive = true }: { interactive?: boolean 
   const setHover = useStore((s) => s.setHover)
 
   const products: readonly Product[] = data?.products ?? []
+  // train-only ranking (1–15 Nov): the month-wide Product.rank would show held-out picks to the player
+  const ranks = useMemo(() => (data ? trainRanks(data.products) : null), [data])
   const inv = useMemo(() => (assignment ? slotToSku(assignment) : null), [assignment])
 
   const cells = useMemo(() => {
@@ -140,15 +143,16 @@ export default function SlotMap({ interactive = true }: { interactive?: boolean 
       >
         {cells.map(({ slot, x, y, sku }) => {
           const p = sku >= 0 ? products[sku] : undefined
+          const rank = p && ranks ? ranks[sku] : 0
           return (
             <Cell
               key={slot}
               slot={slot}
               x={x}
               y={y}
-              fill={p ? heatColor(p.rank, products.length || 100) : '#1a2133'}
-              label={p && p.rank <= 10 ? String(p.rank) : null}
-              title={p ? `#${p.rank} ${p.sku} ${p.desc} · ${p.picksTrain} train picks` : `slot ${slot}`}
+              fill={p ? heatColor(rank, products.length || 100) : '#1a2133'}
+              label={p && rank <= 10 ? String(rank) : null}
+              title={p ? `#${rank} by train picks · ${p.sku} ${p.desc} · ${p.picksTrain} train picks` : `slot ${slot}`}
               selected={selectedSlot === slot}
               hovered={hoverSlot === slot}
             />

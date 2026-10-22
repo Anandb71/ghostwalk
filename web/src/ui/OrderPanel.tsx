@@ -1,5 +1,5 @@
 import { useMemo } from 'react'
-import { slotBay } from '../sim'
+import { slotBay, trainRanks } from '../sim'
 import { useStore } from '../store'
 import { fmtTs } from './format'
 import { heatColor } from './heat'
@@ -18,7 +18,8 @@ export default function OrderPanel() {
 
   const lines = useMemo(() => {
     if (!data || !order) return []
-    return order.skus.map((sku, i) => ({ sku, product: data.products[sku], qty: order.qtys[i] ?? 0 }))
+    const ranks = trainRanks(data.products) // train-only heat, same as the cartons
+    return order.skus.map((sku, i) => ({ sku, product: data.products[sku], rank: ranks[sku] || 100, qty: order.qtys[i] ?? 0 }))
   }, [data, order])
 
   const frontHalf = useMemo(() => {
@@ -96,9 +97,9 @@ export default function OrderPanel() {
       )}
 
       <ul className="mt-2.5 max-h-[34vh] space-y-0.5 overflow-y-auto pr-1">
-        {lines.map(({ sku, product, qty }) => (
+        {lines.map(({ sku, product, rank, qty }) => (
           <li key={sku} className="flex items-center gap-2 rounded px-1 py-1 text-[12px] hover:bg-white/[0.04]">
-            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: heatColor(product?.rank ?? 100) }} />
+            <span className="h-2.5 w-2.5 shrink-0 rounded-sm" style={{ background: heatColor(rank) }} />
             <span className="tabular w-[52px] shrink-0 text-white/50">{product?.sku ?? sku}</span>
             <span className="min-w-0 flex-1 truncate text-white/85" title={product?.desc}>
               {product?.desc ?? '?'}
@@ -109,7 +110,7 @@ export default function OrderPanel() {
       </ul>
 
       <div className="mt-3 flex items-center justify-between gap-2 border-t border-white/[0.06] pt-2.5">
-        <Button onClick={() => setOrder(hero)} disabled={orderIdx === hero} title="First held-out order with 6–9 lines">
+        <Button onClick={() => setOrder(hero)} disabled={orderIdx === hero} title="First train order with 6–9 lines">
           Hero order
         </Button>
         <span className="text-[10px] text-white/40">Space play/pause · route never crosses a rack</span>
