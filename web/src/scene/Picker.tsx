@@ -1,50 +1,23 @@
-// Procedural picker rig (no GLB): capsule body, head, a small push cart carrying two cartons.
-// Faces local +z. variant 'solid' = orange "you", 'ghost' = translucent cyan old layout.
-// The rig itself is static; Walker moves the root group and animates the body ref.
-import type { RefObject } from 'react'
+// Procedural picker from the Floor Lab (lab/picker.ts, no GLB): a skinned worker in a hi-vis vest
+// and hard hat pushing a two-tier picking cart whose tote fills with a mini carton per order line,
+// a floor blob and a floor ring. variant 'solid' = orange "you" (4 draw calls, casts shadows at
+// HQ), 'ghost' = translucent cyan old layout with scanlines (5 draw calls). Faces local +z.
+// Walker moves the root group (position + smoothed heading) at useFrame priority -1; this
+// component's useFrame (priority 0) runs after it and feeds that pose plus the optional
+// PickerDrive (walking, picking target, lines carried) into the rig's walk cycle and pick pose.
+// The body ref is an empty group: Walker's legacy bob and lean land there, not on the rig.
+import { useEffect, useMemo, type RefObject } from 'react'
 import { Html } from '@react-three/drei'
-import * as THREE from 'three'
+import { useFrame, useThree } from '@react-three/fiber'
+import type * as THREE from 'three'
+import { buildPicker, type PickerDrive } from './lab/picker'
 import { PALETTE } from './shared'
 
 export type PickerVariant = 'solid' | 'ghost'
+export type { PickerDrive } from './lab/picker'
 
-const GEO = {
-  body: new THREE.CapsuleGeometry(0.26, 0.62, 6, 14),
-  head: new THREE.SphereGeometry(0.19, 18, 14),
-  cart: new THREE.BoxGeometry(0.62, 0.36, 0.78),
-  handle: new THREE.BoxGeometry(0.62, 0.05, 0.05),
-  box: new THREE.BoxGeometry(0.3, 0.24, 0.32),
-}
-
-function makeMaterials(variant: PickerVariant) {
-  if (variant === 'ghost') {
-    const ghost = (opacity: number) =>
-      new THREE.MeshStandardMaterial({
-        color: PALETTE.ghost,
-        emissive: PALETTE.ghost,
-        emissiveIntensity: 0.55,
-        transparent: true,
-        opacity,
-        depthWrite: false,
-        roughness: 0.4,
-      })
-    const m = ghost(0.35)
-    const faint = ghost(0.22)
-    return { body: m, head: m, cart: faint, handle: faint, box: faint }
-  }
-  return {
-    body: new THREE.MeshStandardMaterial({ color: PALETTE.solid, emissive: PALETTE.solid, emissiveIntensity: 0.18, roughness: 0.55 }),
-    head: new THREE.MeshStandardMaterial({ color: '#f3d2b0', roughness: 0.7 }),
-    cart: new THREE.MeshStandardMaterial({ color: '#7d889e', roughness: 0.45, metalness: 0.5 }),
-    handle: new THREE.MeshStandardMaterial({ color: '#c9d1e0', roughness: 0.35, metalness: 0.6 }),
-    box: new THREE.MeshStandardMaterial({ color: PALETTE.cardboard, roughness: 0.9 }),
-  }
-}
-
-const MATS: Record<PickerVariant, ReturnType<typeof makeMaterials>> = {
-  solid: makeMaterials('solid'),
-  ghost: makeMaterials('ghost'),
-}
+/** Fresh drive state for one walker (pass the function itself to useState). */
+export const newPickerDrive = (): PickerDrive => ({ moving: false, picking: false, targetX: 0, targetZ: 0, carried: 0 })
 
 export interface PickerProps {
   variant: PickerVariant
@@ -52,22 +25,54 @@ export interface PickerProps {
   bodyRef: RefObject<THREE.Group | null>
   label?: string
   labelY?: number
+  /** walk state written by Walker each frame; without it the rig idles (no picking, empty tote) */
+  drive?: PickerDrive
 }
 
-export default function Picker({ variant, rootRef, bodyRef, label, labelY = 2.3 }: PickerProps) {
-  const m = MATS[variant]
-  const ro = variant === 'ghost' ? 5 : 0 // ghost draws after opaque geometry
+// Ghost programs (skinned transparent body, its depth pre-pass, ghost minis) compile on first use,
+// which is a visible hitch when a race is started by hand. Once per page, shortly after the idle
+// solid picker mounts, a never-drawn ghost rig is compiled against the live scene and its materials
+// are kept, so the shared programs stay cached for the real ghost. Nothing is uploaded but programs.
+let ghostWarmed = false
+const warmKeep: Set<THREE.Material>[] = [] // never disposed: disposing would release the programs
+const WARM_DELAY_MS = 1500
+
+function useGhostWarmup(enabled: boolean) {
+  const gl = useThree((s) => s.gl)
+  const scene = useThree((s) => s.scene)
+  const camera = useThree((s) => s.camera)
+  useEffect(() => {
+    if (!enabled || ghostWarmed) return
+    const id = window.setTimeout(() => {
+      if (ghostWarmed) return
+      ghostWarmed = true
+      try {
+        const warm = buildPicker({ ghost: true })
+        warmKeep.push(gl.compile(warm.group, camera, scene))
+      } catch {
+        // warm-up is an optimisation only; the ghost still compiles on first draw
+      }
+    }, WARM_DELAY_MS)
+    return () => window.clearTimeout(id)
+  }, [enabled, gl, scene, camera])
+}
+
+export default function Picker({ variant, rootRef, bodyRef, label, labelY = 2.3, drive }: PickerProps) {
+  const rig = useMemo(() => buildPicker({ ghost: variant === 'ghost' }), [variant])
+  // GPU resources only: StrictMode's simulated unmount + remount keeps rendering the same rig
+  useEffect(() => () => rig.dispose(), [rig])
+  useGhostWarmup(variant === 'solid')
+
+  // priority 0: after Walker (-1), so the rig sees this frame's root pose
+  useFrame((s, delta) => {
+    const r = rootRef.current
+    if (r) rig.drive(r.position.x, r.position.z, r.rotation.y, drive ?? null, Math.min(delta, 0.1), s.clock.elapsedTime)
+  })
+
   return (
     <group ref={rootRef}>
-      <group ref={bodyRef}>
-        <mesh geometry={GEO.body} material={m.body} position={[0, 0.6, 0]} renderOrder={ro} />
-        <mesh geometry={GEO.head} material={m.head} position={[0, 1.42, 0]} renderOrder={ro} />
-      </group>
-      {/* push cart in front of the picker */}
-      <mesh geometry={GEO.cart} material={m.cart} position={[0, 0.5, 0.78]} renderOrder={ro} />
-      <mesh geometry={GEO.handle} material={m.handle} position={[0, 0.98, 0.36]} renderOrder={ro} />
-      <mesh geometry={GEO.box} material={m.box} position={[-0.13, 0.8, 0.66]} renderOrder={ro} />
-      <mesh geometry={GEO.box} material={m.box} position={[0.12, 0.8, 0.92]} rotation-y={0.3} renderOrder={ro} />
+      <group ref={bodyRef} />
+      <primitive object={rig.group} />
       {label ? (
         <Html position={[0, labelY, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
           <div

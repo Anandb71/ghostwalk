@@ -1,32 +1,40 @@
-// The 100 cartons: ONE InstancedMesh (1 draw call) placed at slotPosition(displayAssignment[sku]),
-// coloured by TRAIN pick rank (sim.trainRanks: 1–15 Nov only, 1 = hot orange ... 100 = cool blue;
-// the month-wide Product.rank includes held-out picks and is never shown). Whenever the displayed assignment
-// changes (swap, Baseline/SA apply, live SA progress) each moved carton fly-lerps to its new slot
-// in 300 ms with an ease-out arc. An invisible, enlarged twin mesh shares the instance matrices and
-// takes the raycasts: hover -> store.setHover(slot), click -> store.selectSlot(slot) (the store
-// swaps on the second click). Selected slot = emissive halo ring, hovered = outline + Html label.
+// The 100 cartons, Floor Lab models (lab/cartons.ts): TWO InstancedMeshes (2 draw calls), kraft
+// bodies with tape, hand holes and print, and one shipping label per sku (SKU, description, barcode,
+// TRAIN rank) on the face that looks into the aisle. Each carton sits on the pick beam at
+// displayAssignment[sku]. Heat off = plain cardboard; Heat on (store.showHeat) eases in a tint by
+// TRAIN pick rank (sim.trainRanks: 1–15 Nov only, 1 = hot orange ... 100 = cool blue, the ramp of the
+// 2D slot map; the month-wide Product.rank includes held-out picks and is never shown). Whenever the
+// displayed assignment changes (swap, Baseline/SA apply, live SA progress) each moved carton
+// fly-lerps to its new slot in 300 ms with an ease-out arc, turning to face its new aisle. An
+// invisible, enlarged twin mesh with its own translation-only matrices takes the raycasts:
+// hover -> store.setHover(slot), click -> store.selectSlot(slot) (the store swaps on the second
+// click). Selected slot = emissive halo ring, hovered = outline + Html label.
 import { useEffect, useLayoutEffect, useMemo, useRef, type CSSProperties } from 'react'
 import { useFrame, type ThreeEvent } from '@react-three/fiber'
 import { Html } from '@react-three/drei'
 import * as THREE from 'three'
-import { SLOTS, slotPosition, slotSide } from '../sim/layout'
+import { SLOTS, slotSide } from '../sim/layout'
 import { trainRanks } from '../sim/data'
 import { displayAssignment, useStore, type GhostState } from '../store'
-import { PALETTE, rankColor } from './shared'
+import { PALETTE, angleDelta } from './shared'
+import { cartonPose, createCartonResources, slotCartonCentre, writeCartonMatrix, writeLabelMatrix } from './lab/cartons'
 
 const N = SLOTS // 100 products <-> 100 slots
 const FLY_S = 0.3
 
-const BOX_GEO = new THREE.BoxGeometry(0.8, 0.8, 1.0)
-const HIT_GEO = new THREE.BoxGeometry(1.05, 1.05, 1.25) // ~1.3x hit target
+// hit box: stays inside the bay (1.2 m along z) and the 1.28 m between back-to-back cartons (x)
+const HIT_GEO = new THREE.BoxGeometry(0.95, 0.8, 1.12)
 const HIT_MAT = new THREE.MeshBasicMaterial({ visible: false }) // raycast only, never drawn
-const OUTLINE_GEO = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.94, 0.94, 1.14))
-const HALO_GEO = new THREE.TorusGeometry(0.68, 0.045, 10, 48).rotateY(Math.PI / 2) // ring faces the aisle (x)
+const OUTLINE_GEO = new THREE.EdgesGeometry(new THREE.BoxGeometry(0.72, 0.62, 0.92))
+const HALO_GEO = new THREE.TorusGeometry(0.55, 0.04, 10, 48).rotateY(Math.PI / 2) // ring faces the aisle (x)
 
 interface FlyState {
   cur: Float32Array // displayed position (incl. arc) per sku
   from: Float32Array
   to: Float32Array
+  curR: Float32Array // displayed heading (ry) per sku
+  fromR: Float32Array
+  toR: Float32Array
   start: Float64Array // flight start (s), -1 = at rest
   slots: Int16Array // slot currently assigned per sku, -1 = none
   placed: boolean
@@ -37,21 +45,42 @@ interface FlyState {
 export const cartonSlots = new Int16Array(N).fill(-1)
 
 const nowS = () => performance.now() / 1000
+const pose = new Float32Array(4) // cartonPose scratch: x, y, z, ry
 
 /** Offset from the slot centre toward its aisle (side 0 racks face +x, side 1 face -x). */
 const aisleFacing = (slot: number) => (slotSide(slot) === 0 ? 1 : -1)
 
+/** Write body, label and hit matrices of sku i from its displayed pose (no allocation). */
+function writeInstance(fly: FlyState, size: Float32Array, body: Float32Array, labels: Float32Array, hit: Float32Array, i: number): void {
+  const o = i * 3
+  const x = fly.cur[o]
+  const y = fly.cur[o + 1]
+  const z = fly.cur[o + 2]
+  const ry = fly.curR[i]
+  writeCartonMatrix(body, i, x, y, z, ry, size[o], size[o + 1], size[o + 2])
+  writeLabelMatrix(labels, i, x, y, z, ry, size[o + 2])
+  // the hit box keeps its identity rotation/scale: translation only
+  hit[i * 16 + 12] = x
+  hit[i * 16 + 13] = y
+  hit[i * 16 + 14] = z
+}
+
 export default function Cartons() {
   const products = useStore((s) => s.data?.products ?? null)
   const meshRef = useRef<THREE.InstancedMesh>(null)
+  const labelRef = useRef<THREE.InstancedMesh>(null)
   const hitRef = useRef<THREE.InstancedMesh>(null)
   const hoverLocal = useRef<number | null>(null)
-  const material = useMemo(() => new THREE.MeshStandardMaterial({ color: '#ffffff', roughness: 0.62, metalness: 0.04 }), [])
+  const res = useMemo(createCartonResources, [])
+  useEffect(() => () => res.dispose(), [res])
   const fly = useMemo<FlyState>(
     () => ({
       cur: new Float32Array(N * 3),
       from: new Float32Array(N * 3),
       to: new Float32Array(N * 3),
+      curR: new Float32Array(N),
+      fromR: new Float32Array(N),
+      toR: new Float32Array(N),
       start: new Float64Array(N).fill(-1),
       slots: new Int16Array(N).fill(-1),
       placed: false,
@@ -60,39 +89,39 @@ export default function Cartons() {
     [],
   )
 
-  // one-time mesh setup: colour attribute up front (shader compiled with it), hit mesh shares matrices
+  // one-time mesh setup: kraft colour attribute up front (shader compiled with it); the hit mesh
+  // keeps its own translation-only matrices (the body matrices carry rotation and per-sku scale)
   useLayoutEffect(() => {
     const mesh = meshRef.current
+    const labels = labelRef.current
     const hit = hitRef.current
-    if (!mesh || !hit) return
+    if (!mesh || !labels || !hit) return
     // StrictMode re-runs this effect with the same `fly`: forget earlier placements so the follow
     // effect below places (and shows) every carton again instead of seeing "nothing changed".
     fly.placed = false
     fly.flying = false
     fly.slots.fill(-1)
     fly.start.fill(-1)
-    if (!mesh.instanceColor) mesh.instanceColor = new THREE.InstancedBufferAttribute(new Float32Array(N * 3).fill(1), 3)
-    hit.instanceMatrix = mesh.instanceMatrix
-    hit.count = 0
+    if (!mesh.instanceColor) mesh.instanceColor = new THREE.InstancedBufferAttribute(res.kraft.slice(), 3)
+    mesh.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
+    labels.instanceMatrix.setUsage(THREE.DynamicDrawUsage)
     mesh.visible = false
-  }, [fly])
+    labels.visible = false
+    hit.count = 0
+  }, [fly, res])
 
-  // colours by train pick rank (never the month-wide rank: that includes held-out picks)
+  // labels and heat colours by train pick rank (never the month-wide rank: that includes held-out picks)
   useLayoutEffect(() => {
-    const mesh = meshRef.current
-    if (!mesh || !products) return
-    const ranks = trainRanks(products)
-    const c = new THREE.Color()
-    for (let i = 0; i < N; i++) mesh.setColorAt(i, rankColor(ranks[i] || N, c))
-    if (mesh.instanceColor) mesh.instanceColor.needsUpdate = true
-  }, [products])
+    if (products) res.setProducts(products, trainRanks(products))
+  }, [products, res])
 
   // follow the displayed assignment (player layout, or the live SA layout while annealing)
   useEffect(() => {
     const apply = (state: GhostState) => {
       const mesh = meshRef.current
+      const labels = labelRef.current
       const hit = hitRef.current
-      if (!mesh || !hit) return
+      if (!mesh || !labels || !hit) return
       const asg = displayAssignment(state)
       if (!asg || asg.length < N || !state.data) {
         if (fly.placed) {
@@ -102,35 +131,38 @@ export default function Cartons() {
           fly.start.fill(-1)
           cartonSlots.fill(-1)
           mesh.visible = false
+          labels.visible = false
           hit.count = 0
         }
         return
       }
-      const arr = mesh.instanceMatrix.array as Float32Array
+      const body = mesh.instanceMatrix.array as Float32Array
+      const lab = labels.instanceMatrix.array as Float32Array
+      const hits = hit.instanceMatrix.array as Float32Array
+      const size = res.size
       const now = nowS()
-      let changed = false
       for (let i = 0; i < N; i++) {
         const slot = asg[i]
         if (slot === fly.slots[i]) continue
-        changed = true
         fly.slots[i] = slot
         cartonSlots[i] = slot
-        const p = slotPosition(slot)
         const o = i * 3
-        fly.to[o] = p.x
-        fly.to[o + 1] = p.y
-        fly.to[o + 2] = p.z
+        cartonPose(slot, size[o + 2], size[o + 1], pose, 0)
+        fly.to[o] = pose[0]
+        fly.to[o + 1] = pose[1]
+        fly.to[o + 2] = pose[2]
+        fly.toR[i] = pose[3]
         if (!fly.placed) {
-          fly.cur[o] = p.x
-          fly.cur[o + 1] = p.y
-          fly.cur[o + 2] = p.z
-          arr[i * 16 + 12] = p.x
-          arr[i * 16 + 13] = p.y
-          arr[i * 16 + 14] = p.z
+          fly.cur[o] = pose[0]
+          fly.cur[o + 1] = pose[1]
+          fly.cur[o + 2] = pose[2]
+          fly.curR[i] = pose[3]
+          writeInstance(fly, size, body, lab, hits, i)
         } else {
           fly.from[o] = fly.cur[o]
           fly.from[o + 1] = fly.cur[o + 1]
           fly.from[o + 2] = fly.cur[o + 2]
+          fly.fromR[i] = fly.curR[i]
           fly.start[i] = now
           fly.flying = true
         }
@@ -138,17 +170,17 @@ export default function Cartons() {
       if (!fly.placed) {
         fly.placed = true
         mesh.visible = true
+        labels.visible = true
         hit.count = N
         mesh.instanceMatrix.needsUpdate = true
-        mesh.computeBoundingSphere()
+        labels.instanceMatrix.needsUpdate = true
+        hit.instanceMatrix.needsUpdate = true
         hit.computeBoundingSphere()
-      } else if (changed) {
-        mesh.instanceMatrix.needsUpdate = true
       }
     }
     apply(useStore.getState())
     return useStore.subscribe(apply)
-  }, [fly])
+  }, [fly, res])
 
   useEffect(
     () => () => {
@@ -157,12 +189,25 @@ export default function Cartons() {
     [],
   )
 
-  useFrame(() => {
+  useFrame((_, delta) => {
+    // ease the heat tint toward the Heat toggle (uniform only: no recompiles, no re-uploads)
+    const dt = Math.min(delta, 0.1)
+    const heat = res.uHeat
+    const target = useStore.getState().showHeat ? 1 : 0
+    if (heat.value !== target) {
+      heat.value += (target - heat.value) * (1 - Math.exp(-dt * 6))
+      if (Math.abs(target - heat.value) <= 1e-3) heat.value = target
+    }
+
     if (!fly.flying) return
     const mesh = meshRef.current
+    const labels = labelRef.current
     const hit = hitRef.current
-    if (!mesh || !hit) return
-    const arr = mesh.instanceMatrix.array as Float32Array
+    if (!mesh || !labels || !hit) return
+    const body = mesh.instanceMatrix.array as Float32Array
+    const lab = labels.instanceMatrix.array as Float32Array
+    const hits = hit.instanceMatrix.array as Float32Array
+    const size = res.size
     const now = nowS()
     let active = 0
     for (let i = 0; i < N; i++) {
@@ -174,6 +219,7 @@ export default function Cartons() {
         fly.cur[o] = fly.to[o]
         fly.cur[o + 1] = fly.to[o + 1]
         fly.cur[o + 2] = fly.to[o + 2]
+        fly.curR[i] = fly.toR[i]
         fly.start[i] = -1
       } else {
         const k = 1 - (1 - e) * (1 - e) * (1 - e)
@@ -183,16 +229,17 @@ export default function Cartons() {
         fly.cur[o] = fly.from[o] + dx * k
         fly.cur[o + 1] = fly.from[o + 1] + (fly.to[o + 1] - fly.from[o + 1]) * k + arc
         fly.cur[o + 2] = fly.from[o + 2] + dz * k
+        // a swap across the aisle turns the carton 180 degrees so its label ends up facing the aisle
+        fly.curR[i] = fly.fromR[i] + angleDelta(fly.fromR[i], fly.toR[i]) * k
         active++
       }
-      arr[i * 16 + 12] = fly.cur[o]
-      arr[i * 16 + 13] = fly.cur[o + 1]
-      arr[i * 16 + 14] = fly.cur[o + 2]
+      writeInstance(fly, size, body, lab, hits, i)
     }
     mesh.instanceMatrix.needsUpdate = true
+    labels.instanceMatrix.needsUpdate = true
+    hit.instanceMatrix.needsUpdate = true
     if (active === 0) {
       fly.flying = false
-      mesh.computeBoundingSphere()
       hit.computeBoundingSphere()
     }
   })
@@ -223,7 +270,8 @@ export default function Cartons() {
 
   return (
     <group>
-      <instancedMesh ref={meshRef} args={[BOX_GEO, material, N]} frustumCulled={false} />
+      <instancedMesh ref={meshRef} args={[res.bodyGeo, res.bodyMat, N]} frustumCulled={false} castShadow receiveShadow />
+      <instancedMesh ref={labelRef} args={[res.labelGeo, res.labelMat, N]} frustumCulled={false} receiveShadow />
       <instancedMesh ref={hitRef} args={[HIT_GEO, HIT_MAT, N]} onPointerMove={onMove} onPointerOut={onOut} onClick={onClick} />
       <CartonMarkers />
     </group>
@@ -253,18 +301,18 @@ function CartonMarkers() {
     h.scale.setScalar(k)
   })
 
-  const hover = hoverSlot !== null && hoverSku >= 0 && products ? { slot: hoverSlot, p: products[hoverSku], pos: slotPosition(hoverSlot) } : null
-  const sel = selectedSlot !== null && selectedSku >= 0 && products ? { slot: selectedSlot, p: products[selectedSku], pos: slotPosition(selectedSlot) } : null
+  const hover = hoverSlot !== null && hoverSku >= 0 && products ? { slot: hoverSlot, p: products[hoverSku], pos: slotCartonCentre(hoverSlot) } : null
+  const sel = selectedSlot !== null && selectedSku >= 0 && products ? { slot: selectedSlot, p: products[selectedSku], pos: slotCartonCentre(selectedSlot) } : null
 
   return (
     <group>
       {sel ? (
         <group position={[sel.pos.x, sel.pos.y, sel.pos.z]}>
-          <mesh ref={haloRef} geometry={HALO_GEO} position={[aisleFacing(sel.slot) * 0.44, 0, 0]} renderOrder={6}>
+          <mesh ref={haloRef} geometry={HALO_GEO} position={[aisleFacing(sel.slot) * 0.33, 0, 0]} renderOrder={6}>
             <meshStandardMaterial color={PALETTE.solid} emissive={PALETTE.solid} emissiveIntensity={2.4} toneMapped={false} />
           </mesh>
           {sel.slot !== hoverSlot ? (
-            <Html position={[0, 0.95, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+            <Html position={[0, 0.62, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
               <div style={tagStyle(true)}>{sel.p?.sku}</div>
             </Html>
           ) : null}
@@ -275,7 +323,7 @@ function CartonMarkers() {
           <lineSegments geometry={OUTLINE_GEO}>
             <lineBasicMaterial color="#ffffff" toneMapped={false} />
           </lineSegments>
-          <Html position={[0, 1.05, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
+          <Html position={[0, 0.72, 0]} center zIndexRange={[20, 0]} style={{ pointerEvents: 'none' }}>
             <div style={tagStyle(false)}>
               <span style={{ fontWeight: 700 }}>{hover.p?.sku}</span>
               <span style={{ opacity: 0.55 }}> · </span>
