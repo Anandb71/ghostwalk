@@ -1,6 +1,6 @@
 # Q&A cards
 
-Three minutes of Q&A follow the 5-minute demo. Each card has a **20-second answer**, **what to show** on screen, and an **if pushed** follow-up. Both of us must be able to give every card. Numbers are not typed here: point at the Evidence panel or at `eval/results.md`, which come from the same simulator.
+Three minutes of Q&A follow the 5-minute demo. Each card has a **20-second answer**, **what to show** on screen, and an **if pushed** follow-up. Both of us must be able to give every card. Result numbers are not typed here: point at the Evidence panel or at `eval/results.md`, which come from the same simulator. The few data facts typed in cards 17 and 18 are on the re-check list in [README.md](README.md).
 
 The first five cards are the ones issue #10 asked for. The rest are the follow-ups we expect.
 
@@ -12,7 +12,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 **Show.** Evidence panel: "N orders exact (X % of metres), M heuristic".
 
-**If pushed.** The DP is `dp[mask][j]`: the shortest walk from the dock through exactly the stops in `mask`, ending at `j`. That is O(2ⁿ · n²) time, about 250k steps at n = 11, under a millisecond per order. Each extra stop doubles the cost, so we cap it there and report the share of metres the cap affects. Exactness is a unit test: Held–Karp equals brute force on 200 random stop sets.
+**If pushed.** The DP is `dp[mask][j]`: the shortest walk from the dock through exactly the stops in `mask`, ending at `j`. That is O(2ⁿ · n²) time, about 250k steps at n = 11, and each stop set is solved once and cached. Each extra stop doubles the cost, so we cap it there and report the share of metres the cap affects. Exactness is a unit test: Held–Karp equals brute force on 200 random stop sets of up to 7 stops.
 
 ## 2. Why a held-out split?
 
@@ -28,7 +28,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 **Show.** KPI card headline tile; the Original, Random (42) and Baseline rows.
 
-**If pushed.** Original is catalogue order (StockCode order, aisle by aisle), the "nobody slotted" layout. We added Random (seed 42) as a second reference so nobody can say we chose a convenient original. Baseline ranks by **train** picks only, so it does not peek at the held-out half either.
+**If pushed.** Original is catalogue order (StockCode order, aisle by aisle), the "nobody slotted" layout. We added Random (seed 42) as a second reference so nobody can say we chose a convenient original. Baseline ranks by **train** picks only (ties broken by StockCode), so it does not peek at the held-out half either. Card 17 explains why Baseline beats catalogue order by so little.
 
 ## 4. Is the optimiser reproducible?
 
@@ -42,7 +42,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 **Answer.** **Observed:** the orders, which are real UCI Online Retail II invoices from November 2011: which products, which quantities, when. **Declared:** the warehouse. The problem statement leaves the layout to us: 5 aisles × 2 sides × 10 bays, three cross-aisles, 1.2 m/s walking, 8 s per pick line. The time model is synthetic. The order data is real, and the building is our assumption, stated in the README.
 
-**Show.** Assumptions panel (one click from anywhere); README "Warehouse layout (declared)" with the floor plan generated from `sim/layout.ts`.
+**Show.** Evidence tab → Assumptions & limitations; README "Warehouse layout (declared)" with the floor plan generated from `sim/layout.ts`.
 
 **If pushed.** Metres are the primary KPI because they depend only on geometry and the orders. Seconds add the declared constants on top (metres / 1.2 + 8 × lines). Changing those constants rescales time but not which layout walks less.
 
@@ -52,7 +52,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 **Answer.** The picker plays back the node path that `simulate()` returned for that exact invoice on the current layout. Swap two cartons and the next replay walks a different path. The counters sum the same per-order metres the KPI card uses.
 
-**Show.** Replay an order, swap one of its cartons, replay: the route changes. The order card shows the real invoice id and timestamp.
+**Show.** Replay an order, swap one of its cartons in Slot, go back to Replay: the route changes. The order card shows the real invoice id and timestamp.
 
 ## 7. How do you know the picker never walks through a rack?
 
@@ -66,7 +66,7 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 ## 9. Why simulated annealing and not an exact or other method?
 
-**Answer.** Slotting with exact routing inside is a hard combinatorial problem: every swap changes the tours of many orders. Annealing is simple, anytime and visual, and it is cheap per step because we re-route only the orders that contain the two swapped SKUs. That lets it run live in the browser.
+**Answer.** Slotting with exact routing inside is a hard combinatorial problem: every swap changes the tours of many orders. Annealing is simple, anytime and visual, and it is cheap per step because we re-route only the train orders that contain exactly one of the two swapped SKUs (an order with both keeps the same stops). That lets it run live in the browser.
 
 **If pushed.** The incremental total is tested against a full recompute. The objective is train metres only. An ILP or genetic algorithm is possible future work; annealing was the best fit for a live, reproducible, in-browser opponent.
 
@@ -76,11 +76,11 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 
 ## 11. Why the S-shape toggle?
 
-**Answer.** S-shape is the routing many human pickers follow: walk every aisle with a pick end to end. Toggling it separates how much is saved by **slotting** from how much by **routing**. S-shape can never be shorter than the exact tour, and a test checks that on every order.
+**Answer.** S-shape is the routing many human pickers follow: walk every aisle with a pick end to end. Toggling it separates how much is saved by **slotting** from how much by **routing**. S-shape can never be shorter than the exact tour, and a test checks that on every train order.
 
 ## 12. Does it run smoothly on a normal laptop?
 
-**Answer.** Scoring runs in a Web Worker, so the 3D thread never blocks. Racks and cartons are instanced, labels appear only for hovered, selected and top-10 cartons, and bloom is off by default. Measured ms per full re-score is in `eval/results.md` and the Evidence panel.
+**Answer.** Scoring runs in a Web Worker, so the 3D thread never blocks. Racks, cartons and heat tiles are instanced meshes, 3D labels appear only for the hovered and selected carton, and bloom is off unless you pick HQ. Measured ms per full re-score is in `eval/results.md` and the Evidence panel.
 
 ## 13. How much of this did AI write? Can you explain it?
 
@@ -99,3 +99,15 @@ The first five cards are the ones issue #10 asked for. The rest are the follow-u
 ## 16. What exactly was cleaned out of the data?
 
 **Answer.** Cancelled invoices (numbers starting with C), lines with quantity or price ≤ 0 (returns, adjustments), and non-product codes such as POST, M and BANK CHARGES. Quantities of the same product within one invoice are summed into one pick. The count removed at each step is in the README Data table and in the Evidence panel.
+
+## 17. Why does Baseline beat catalogue order by so little?
+
+**Answer.** Baseline ranks products one at a time by how often they are picked. It ignores what is bought together. In the train orders, 7 of the 8 most co-picked pairs are product families with neighbouring StockCodes: the Scandinavian wooden heart, star and tree (22577, 22578, 22579), two kneeling pads (23300, 23301), two alarm clocks (22726, 22727) and others. Catalogue order sorts by StockCode, so it keeps 6 of those 8 pairs within 5.2 m by accident. Baseline puts 6 of the 8 pairs 10 to 20 m apart. The annealer scores whole orders, so it learns the pairs: the shipped SA layout has all 8 within 1.2 m.
+
+**Show.** KPI card: the Original and Baseline rows. In Slot, hover the two kneeling pads under Baseline, then after **Apply SA layout**.
+
+**If pushed.** The distances are walking metres between slot nodes on the aisle graph, computed with `web/src/sim/` from `orders.json`. This is the honest reason our headline is measured against Baseline: beating catalogue order would look easy for the wrong reason.
+
+## 18. Why is the gap in the race bigger than the headline?
+
+**Answer.** The race walks six held-out orders picked by a fixed rule: the ones where the two layouts differ most (`sim/race.ts`, deterministic, unit-tested). That makes the difference visible in under a minute, and it is larger than average by construction. The Race panel always prints the full held-out figure underneath, and that full figure is the headline everywhere.
