@@ -6,11 +6,14 @@ import { mkdirSync, readFileSync, writeFileSync } from 'node:fs'
 import { dirname, resolve } from 'node:path'
 import { fileURLToPath } from 'node:url'
 import {
+  DOCK,
   MAX_EXACT_STOPS,
   anneal,
   baselineFastMovers,
   catalogueLayout,
   clearRouteCache,
+  dist,
+  orderCost,
   orderStops,
   ordersFor,
   prepareDataset,
@@ -36,8 +39,10 @@ const OUT_SA = resolve(root, 'web/public/layouts/sa_seed42.json')
 const SA_SEED = 42
 const SA_ITERS = 30_000
 const EXTRA_SEEDS = [43, 44, 45, 46]
-const SEED_BUDGET_MS = 4 * 60_000 // if 5 x 30k would take longer than this, extra seeds get fewer iterations
+const SEED_BUDGET_MS = 8 * 60_000 // if 5 x 30k would take longer than this, extra seeds get fewer iterations
 const EXTRA_ITERS_FALLBACK = 15_000
+const LIVE_ITERS = 3_000 // what the app's Anneal panel runs on stage
+const OFFLINE_EXACT_MAX_STOPS = 16 // independent Held-Karp for heuristic-routed orders, offline only
 
 const log = (...a: unknown[]) => console.log('[eval]', ...a)
 const sh = (cmd: string): string => {
@@ -152,6 +157,74 @@ for (const o of sets.all) {
 }
 const heuristicQuality = { orders: hqN, optimal: hqSame, meanGap: hqGapSum / hqN, maxGap: hqGapMax }
 
+/**
+ * Independent Held–Karp (not sim/route.ts), used offline only for orders with 12..16 stops: exactly the
+ * orders the app routes with the heuristic. 2^16 x 16 states is fine in Node, too slow for the worker.
+ */
+function heldKarpOffline(stops: number[]): number {
+  const n = stops.length
+  const full = (1 << n) - 1
+  const d = new Float64Array(n * n)
+  for (let j = 0; j < n; j++) for (let k = 0; k < n; k++) d[j * n + k] = dist(stops[j], stops[k])
+  const dp = new Float64Array((1 << n) * n).fill(Infinity)
+  for (let k = 0; k < n; k++) dp[(1 << k) * n + k] = dist(DOCK, stops[k])
+  for (let mask = 1; mask <= full; mask++) {
+    for (let j = 0; j < n; j++) {
+      if (!(mask & (1 << j))) continue
+      const v = dp[mask * n + j]
+      if (v === Infinity) continue
+      for (let k = 0; k < n; k++) {
+        if (mask & (1 << k)) continue
+        const at = (mask | (1 << k)) * n + k
+        const c = v + d[j * n + k]
+        if (c < dp[at]) dp[at] = c
+      }
+    }
+  }
+  let best = Infinity
+  for (let k = 0; k < n; k++) best = Math.min(best, dp[full * n + k] + dist(stops[k], DOCK))
+  return best
+}
+
+// heuristic quality where the heuristic is actually used (Baseline layout, > MAX_EXACT_STOPS stops)
+let hxN = 0
+let hxSame = 0
+let hxGapSum = 0
+let hxGapMax = 0
+let hxShipped = 0
+let hxOptimal = 0
+let hxSkipped = 0
+let hxMaxStops = 0
+for (const o of sets.all) {
+  const st = orderStops(o, baseline)
+  if (st.length <= MAX_EXACT_STOPS) continue
+  hxMaxStops = Math.max(hxMaxStops, st.length)
+  if (st.length > OFFLINE_EXACT_MAX_STOPS) {
+    hxSkipped++
+    continue
+  }
+  const shipped = orderCost(o, baseline, 'exact') // the metres the simulator actually reports
+  const ex = heldKarpOffline(st)
+  const gap = shipped / ex - 1
+  hxN++
+  if (gap < 1e-9) hxSame++
+  hxGapSum += gap
+  hxGapMax = Math.max(hxGapMax, gap)
+  hxShipped += shipped
+  hxOptimal += ex
+}
+const heuristicInUse = {
+  orders: hxN,
+  optimal: hxSame,
+  meanGap: hxN ? hxGapSum / hxN : 0,
+  maxGap: hxGapMax,
+  metresGap: hxOptimal > 0 ? hxShipped / hxOptimal - 1 : 0,
+  skippedOverMaxStops: hxSkipped,
+  maxStopsSeen: hxMaxStops,
+  offlineMaxStops: OFFLINE_EXACT_MAX_STOPS,
+}
+log(`heuristic in use: ${hxN} orders checked (${hxSkipped} skipped > ${OFFLINE_EXACT_MAX_STOPS} stops), metre excess ${(heuristicInUse.metresGap * 100).toFixed(2)}%`)
+
 // ---- performance ---------------------------------------------------------------------------
 const median = (xs: number[]) => {
   const s = xs.slice().sort((a, b) => a - b)
@@ -171,6 +244,12 @@ for (let i = 0; i < 5; i++) {
   warmMs.push(timeIt(() => simulate(sets.all, original, 'exact', 'all', false)))
   pathsMs.push(timeIt(() => simulate(sets.all, original, 'exact', 'all', true)))
 }
+// the live demo setting: 3k iterations from Baseline, cold route cache (the app's first run)
+clearRouteCache()
+const live = anneal(data, { seed: SA_SEED, iterations: LIVE_ITERS, startFrom: baseline, set: 'train', reportEvery: LIVE_ITERS }, () => {})
+const liveItPerS = live.iterations / (live.elapsedMs / 1000)
+log(`SA live setting (${LIVE_ITERS} it, cold cache): ${liveItPerS.toFixed(0)} it/s`)
+
 const perf = {
   fullRescoreOrders: sets.all.length,
   coldMedianMs: median(coldMs),
@@ -178,6 +257,8 @@ const perf = {
   withPathsMedianMs: median(pathsMs),
   saIterationsPerSecond: saItPerS,
   saElapsedMs: sa.elapsedMs,
+  saLiveIterations: LIVE_ITERS,
+  saLiveColdIterationsPerSecond: liveItPerS,
 }
 log(`re-score: cold ${perf.coldMedianMs.toFixed(1)} ms, warm ${perf.warmMedianMs.toFixed(1)} ms; SA ${saItPerS.toFixed(0)} it/s`)
 
@@ -223,7 +304,12 @@ md.push('## Headline (held-out = orders 16–30 Nov 2011, never seen by Baseline
 md.push(`- **SA vs Baseline, held-out walking distance: ${pct(saRow.deltaHoldoutVsBaseline)}** (${km(baseRow.holdoutM)} km → ${km(saRow.holdoutM)} km)`)
 md.push(`- SA vs Baseline on train (in-sample): ${pct(saRow.deltaTrainVsBaseline)}, so in-sample → held-out shrinkage is ${r1((saRow.deltaTrainVsBaseline - saRow.deltaHoldoutVsBaseline) * -100)} percentage points`)
 md.push(`- Baseline vs Original, held-out: ${pct(baseRow.deltaHoldoutVsOriginal)} (${km(origRow.holdoutM)} km → ${km(baseRow.holdoutM)} km)`)
-md.push(`- SA over seeds ${seedRows.map((r) => r.seed).join(', ')}: held-out Δ vs Baseline ${pct(seedSummary.holdoutDeltaVsBaseline.mean)} ± ${r1(seedSummary.holdoutDeltaVsBaseline.sd * 100)} pp (mean ± sd)`, '')
+const budgetNote =
+  extraIters === SA_ITERS
+    ? `all at ${SA_ITERS.toLocaleString('en-US')} iterations`
+    : `seed ${SA_SEED} at ${SA_ITERS.toLocaleString('en-US')}, seeds ${EXTRA_SEEDS.join(', ')} at ${extraIters.toLocaleString('en-US')} iterations`
+md.push(`- SA over seeds ${seedRows.map((r) => r.seed).join(', ')} (${budgetNote}; seed ${SA_SEED} was fixed before the run): held-out Δ vs Baseline ${pct(seedSummary.holdoutDeltaVsBaseline.mean)} ± ${r1(seedSummary.holdoutDeltaVsBaseline.sd * 100)} pp (mean ± sd)`)
+md.push('- Train-only means train-only: Baseline ranks SKUs by 1–15 Nov picks (ties by StockCode), SA scores train orders only. The top-100 SKU set itself is chosen on the full month by `data/prepare.py` (see Dataset).', '')
 
 md.push('## Layouts, exact routing policy', '')
 md.push('| Layout | Train km | Held-out km | Train s/order | Held-out s/order | Δ held-out vs Baseline | Δ train vs Baseline |')
@@ -247,7 +333,8 @@ md.push('| Layout | Exact orders | Heuristic orders | Share of metres routed exa
 md.push('|---|---:|---:|---:|')
 for (const r of routing) md.push(`| ${r.name} | ${r.exactOrders} | ${r.heuristicOrders} | ${(r.exactShareM * 100).toFixed(1)}% |`)
 md.push('')
-md.push(`Heuristic quality check (Baseline layout, the ${heuristicQuality.orders} orders with 2–${MAX_EXACT_STOPS} stops where both can run): NN + 2-opt matched Held–Karp on ${heuristicQuality.optimal} (${((heuristicQuality.optimal / heuristicQuality.orders) * 100).toFixed(1)}%); mean excess ${(heuristicQuality.meanGap * 100).toFixed(2)}%, worst ${(heuristicQuality.maxGap * 100).toFixed(1)}%.`, '')
+md.push(`Heuristic quality where the app actually uses it (Baseline layout, orders with ${MAX_EXACT_STOPS + 1}–${OFFLINE_EXACT_MAX_STOPS} stops, checked offline against an independent Held–Karp in eval/run.ts): ${heuristicInUse.orders} orders; the route the simulator reports was optimal on ${heuristicInUse.optimal} (${heuristicInUse.orders ? ((heuristicInUse.optimal / heuristicInUse.orders) * 100).toFixed(1) : '0.0'}%); **${(heuristicInUse.metresGap * 100).toFixed(2)}% excess over optimal in total metres**, mean ${(heuristicInUse.meanGap * 100).toFixed(2)}% per order, worst ${(heuristicInUse.maxGap * 100).toFixed(1)}%. ${heuristicInUse.skippedOverMaxStops} heuristic orders have more than ${OFFLINE_EXACT_MAX_STOPS} stops (up to ${heuristicInUse.maxStopsSeen}) and are not checked.`, '')
+md.push(`Sanity check on small orders only (2–${MAX_EXACT_STOPS} stops, which the app always routes with Held–Karp, so this does not describe shipped routes): NN + 2-opt alone matched Held–Karp on ${heuristicQuality.optimal} of ${heuristicQuality.orders} (${((heuristicQuality.optimal / heuristicQuality.orders) * 100).toFixed(1)}%); mean excess ${(heuristicQuality.meanGap * 100).toFixed(2)}%, worst ${(heuristicQuality.maxGap * 100).toFixed(1)}%.`, '')
 
 md.push('## SA across seeds (from Baseline, train only)', '')
 if (extraIters !== SA_ITERS)
@@ -267,6 +354,8 @@ md.push(`| Full-month re-score, warm route cache (median of 5) | ${r1(perf.warmM
 md.push(`| Full-month re-score with paths + pick stops (median of 5) | ${r1(perf.withPathsMedianMs)} ms |`)
 md.push(`| SA iterations per second (seed ${SA_SEED}, ${SA_ITERS.toLocaleString('en-US')} it, incremental + memoised) | ${perf.saIterationsPerSecond.toFixed(0)} |`)
 md.push(`| SA wall time (seed ${SA_SEED}) | ${r1(perf.saElapsedMs / 1000)} s |`)
+md.push(`| SA iterations per second, live-demo setting (${LIVE_ITERS.toLocaleString('en-US')} it from Baseline, cold route cache) | ${perf.saLiveColdIterationsPerSecond.toFixed(0)} |`)
+md.push('', 'Speeds are machine-dependent measurements (the SA result depends only on seed and iterations); the app shows its own measured it/s.')
 md.push('')
 
 md.push('## Dataset', '')
@@ -282,6 +371,7 @@ if (typeof st.coverage_of_month_lines_by_top_skus === 'number')
   md.push(`| Share of the month's order lines covered by these SKUs | ${(st.coverage_of_month_lines_by_top_skus * 100).toFixed(1)}% |`)
 md.push(`| Split rule | ${raw.meta.split.rule} |`)
 md.push('')
+md.push('The top-100 SKU set is chosen on the full month (both halves) by `data/prepare.py`; within it, every ranking the player, the Baseline and SA see uses train picks only.', '')
 
 writeFileSync(OUT_MD, md.join('\n'))
 
@@ -300,6 +390,7 @@ const json = {
   sshape: sshapeRows,
   routing,
   heuristicQuality,
+  heuristicInUse,
   perf,
   sa: { seed: SA_SEED, iterations: SA_ITERS, startFrom: 'baseline', set: 'train', startM: sa.startM, bestM: sa.bestM, holdoutM: saRow.holdoutM },
   seeds: { rows: seedRows, summary: seedSummary, extraIterations: extraIters },

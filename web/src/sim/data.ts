@@ -1,4 +1,4 @@
-import type { Dataset, Order, PreparedData, SetName } from './types'
+import type { Dataset, Order, PreparedData, Product, SetName } from './types'
 
 /**
  * Index the raw dataset: sku string -> product index (array position in `products`),
@@ -58,4 +58,38 @@ export function ordersFor(data: PreparedData, set: SetName): Order[] {
 /** sku string -> product index, or -1. */
 export function skuIndexOf(data: PreparedData, sku: string): number {
   return data.products.findIndex((p) => p.sku === sku)
+}
+
+const trainOrderCache = new WeakMap<readonly Product[], number[]>()
+const trainRankCache = new WeakMap<readonly Product[], Int16Array>()
+
+/**
+ * Product indices ranked by TRAIN picks only (1–15 Nov), most picked first; ties broken by sku
+ * string (plain code-unit compare). Nothing from the held-out half leaks in: `Product.rank` and
+ * the array order are month-wide, so neither is used here. Baseline slotting, the carton heat
+ * colours and the top-10 labels all use this one ranking. Cached per products array.
+ */
+export function trainOrder(products: readonly Product[]): number[] {
+  const hit = trainOrderCache.get(products)
+  if (hit) return hit
+  const idx = products.map((_, i) => i)
+  idx.sort((a, b) => {
+    const d = products[b].picksTrain - products[a].picksTrain
+    if (d !== 0) return d
+    const sa = products[a].sku
+    const sb = products[b].sku
+    return sa < sb ? -1 : sa > sb ? 1 : 0
+  })
+  trainOrderCache.set(products, idx)
+  return idx
+}
+
+/** trainRanks(products)[skuIdx] = 1-based rank by train picks (1 = most picked on 1–15 Nov). */
+export function trainRanks(products: readonly Product[]): Int16Array {
+  const hit = trainRankCache.get(products)
+  if (hit) return hit
+  const out = new Int16Array(products.length)
+  trainOrder(products).forEach((p, k) => (out[p] = k + 1))
+  trainRankCache.set(products, out)
+  return out
 }

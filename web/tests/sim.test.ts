@@ -17,6 +17,8 @@ import {
   randomLayout,
   simulate,
   slotNode,
+  trainOrder,
+  trainRanks,
   verifyIncremental,
 } from '../src/sim'
 import { loadData } from './helpers'
@@ -56,15 +58,20 @@ describe('layouts', () => {
   })
   it('baseline puts the top train-pick product on the slot nearest the dock', () => {
     const a = baselineFastMovers(data.products)
-    let top = 0
-    data.products.forEach((p, i) => {
-      if (p.picksTrain > data.products[top].picksTrain) top = i
-    })
+    const maxTrain = Math.max(...data.products.map((p) => p.picksTrain))
+    const top = trainOrder(data.products)[0]
+    expect(data.products[top].picksTrain).toBe(maxTrain)
     const nearest = Math.min(...Array.from({ length: SLOTS }, (_, s) => dist(DOCK, slotNode(s))))
     expect(dist(DOCK, slotNode(a[top]))).toBe(nearest)
     expect(a[top]).toBe(0) // ties by slot id
-    // distance from the dock never decreases as train picks fall
-    const byPicks = data.products.map((_, i) => i).sort((x, y) => data.products[y].picksTrain - data.products[x].picksTrain || x - y)
+    // distance from the dock never decreases as train picks fall (ties by sku string, never by month rank)
+    const sku = (i: number) => data.products[i].sku
+    const byPicks = data.products
+      .map((_, i) => i)
+      .sort((x, y) => data.products[y].picksTrain - data.products[x].picksTrain || (sku(x) < sku(y) ? -1 : sku(x) > sku(y) ? 1 : 0))
+    expect(trainOrder(data.products)).toEqual(byPicks)
+    const ranks = trainRanks(data.products)
+    byPicks.forEach((p, k) => expect(ranks[p]).toBe(k + 1))
     for (let k = 1; k < byPicks.length; k++)
       expect(dist(DOCK, slotNode(a[byPicks[k]]))).toBeGreaterThanOrEqual(dist(DOCK, slotNode(a[byPicks[k - 1]])))
   })

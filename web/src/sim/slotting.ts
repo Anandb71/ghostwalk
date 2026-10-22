@@ -1,6 +1,6 @@
 import { DOCK, SLOTS, dist, slotNode } from './layout'
 import { mulberry32 } from './rng'
-import { ordersFor } from './data'
+import { ordersFor, trainOrder } from './data'
 import { costForKey, totalMetres } from './simulate'
 import { isPermutation, orderKey } from './stops'
 import type { AnnealOptions, AnnealProgress, AnnealResult, Assignment, Order, PreparedData, Product } from './types'
@@ -35,10 +35,13 @@ export function slotsByDockDistance(): number[] {
   return slots
 }
 
-/** Baseline: rank by picksTrain desc (ties by product index) -> slots by distance from the dock asc (ties by slot id). */
+/**
+ * Baseline: rank by picksTrain desc (ties by sku string, see trainOrder) -> slots by distance from
+ * the dock asc (ties by slot id). Product index is NOT a tie-break: it is the month-wide rank, which
+ * would leak held-out picks into the Baseline.
+ */
 export function baselineFastMovers(products: readonly Product[]): Assignment {
-  const prods = products.map((_, i) => i)
-  prods.sort((a, b) => products[b].picksTrain - products[a].picksTrain || a - b)
+  const prods = trainOrder(products)
   const slots = slotsByDockDistance()
   const out = new Uint8Array(SLOTS)
   prods.forEach((p, k) => (out[p] = slots[k]))
