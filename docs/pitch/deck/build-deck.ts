@@ -87,13 +87,14 @@ const CONTENT_W = W - 2 * M
 
 // ---------- inputs ----------
 const fmt = (n: number) => n.toLocaleString('en-US')
+const NBSP = String.fromCharCode(160) // keeps "CC BY 4.0" on one line
 const links = JSON.parse(readFileSync(join(here, 'links.json'), 'utf8')) as { repo: string; live: string; video: string }
 if (!links.live) pending.push('links.json: live URL (Vercel deploy, #7)')
 if (!links.video) pending.push('links.json: video URL (optional YouTube overview, #11)')
 
 const meta = (JSON.parse(readFileSync(at('web/public/data/orders.json'), 'utf8')) as { meta: DatasetMeta }).meta
 const stats = meta.stats as Record<string, number>
-const coveragePct = `${(stats.coverage_of_month_lines_by_top_skus * 100).toFixed(1)} %`
+const coveragePct = `${(stats.coverage_of_month_lines_by_top_skus * 100).toFixed(1)}${NBSP}%`
 
 interface MdTable {
   header: string[]
@@ -156,19 +157,28 @@ const floorData = `image/png;base64,${floorplanPng.toString('base64')}`
 const qrData = await QRCode.toDataURL(links.repo, { margin: 1, width: 600, color: { dark: '#0B0F17', light: '#E6EDF7' } })
 
 // ---------- layouts ----------
-const motif = (x: number, y: number, r: number) => [
-  { ellipse: { x: x - r * 0.55, y, w: r, h: r, fill: { color: GHOST, transparency: 65 }, line: { color: GHOST, width: 1 } } },
-  { ellipse: { x, y, w: r, h: r, fill: { color: YOU }, line: { color: YOU, width: 0 } } },
-]
+// Brand motif: the translucent ghost picker behind the solid one. Layout objects cannot be
+// ellipses in pptxgenjs, so it is a small transparent PNG.
+const motifPng = await sharp(
+  Buffer.from(
+    `<svg xmlns="http://www.w3.org/2000/svg" width="310" height="200" viewBox="0 0 310 200">` +
+      `<circle cx="100" cy="100" r="92" fill="#${HEX.accent2}" fill-opacity="0.32" stroke="#${HEX.accent2}" stroke-width="6"/>` +
+      `<circle cx="210" cy="100" r="92" fill="#${HEX.accent1}"/></svg>`,
+  ),
+)
+  .png()
+  .toBuffer()
+const motifData = `image/png;base64,${motifPng.toString('base64')}`
+const motif = (x: number, y: number, h: number) => [{ image: { x, y, w: h * 1.55, h, data: motifData, altText: '' } }]
 
 pres.defineSlideMaster({
   title: 'GW_TITLE',
   background: { color: HEX.dk1 },
   objects: [
-    ...motif(W - M - 0.9, 0.55, 0.5),
+    ...motif(M, 0.75, 0.55),
     {
       placeholder: {
-        options: { name: 'title', type: 'title', x: M, y: 2.35, w: 6.6, h: 1.9, fontSize: 50, bold: true, color: FG, valign: 'top', margin: 0, fontFace: THEME.headFontFace },
+        options: { name: 'title', type: 'title', x: M, y: 2.35, w: 5.6, h: 1.9, fontSize: 50, bold: true, color: FG, align: 'left', valign: 'top', margin: 0, fontFace: THEME.headFontFace },
         text: '',
       },
     },
@@ -180,10 +190,10 @@ pres.defineSlideMaster({
   background: { color: HEX.dk1 },
   margin: [0.5, M, 0.6, M],
   objects: [
-    ...motif(W - M - 0.45, 0.62, 0.32),
+    ...motif(W - M - 0.32 * 1.55, 0.66, 0.32),
     {
       placeholder: {
-        options: { name: 'title', type: 'title', x: M, y: 0.42, w: CONTENT_W - 1.0, h: 0.8, fontSize: 32, bold: true, color: FG, valign: 'middle', margin: 0, fontFace: THEME.headFontFace },
+        options: { name: 'title', type: 'title', x: M, y: 0.42, w: CONTENT_W - 1.0, h: 0.8, fontSize: 32, bold: true, color: FG, align: 'left', valign: 'middle', margin: 0, fontFace: THEME.headFontFace },
         text: '',
       },
     },
@@ -206,11 +216,11 @@ const badge = (s: Slide, x: number, y: number, label: string, color = YOU) => {
   text(s, label, { x, y, w: 0.42, h: 0.42, fontSize: 14, bold: true, color: INK, align: 'center', valign: 'middle' })
 }
 
-function card(s: Slide, x: number, y: number, w: number, h: number, n: string, title: string, body: string, accent = YOU) {
+function card(s: Slide, x: number, y: number, w: number, h: number, n: string, title: string, body: string, accent = YOU, bodySize = 15) {
   panel(s, x, y, w, h, `card-${title}`)
   badge(s, x + 0.3, y + 0.3, n, accent)
   text(s, title, { x: x + 0.85, y: y + 0.3, w: w - 1.1, h: 0.42, fontSize: 19, bold: true, valign: 'middle', fontFace: THEME.headFontFace })
-  text(s, body, { x: x + 0.3, y: y + 0.95, w: w - 0.6, h: h - 1.2, fontSize: 15, color: FG })
+  text(s, body, { x: x + 0.3, y: y + 0.95, w: w - 0.6, h: h - 1.2, fontSize: bodySize, color: FG })
 }
 
 function pendingFrame(s: Slide, x: number, y: number, w: number, h: number, what: string) {
@@ -252,13 +262,13 @@ pres.addSection({ title: 'Problem' })
   text(
     s,
     'A 3D digital twin of a picking floor, driven by one real month of orders. Re-slot the cartons, race the ghost of your old layout, and beat the optimiser, with every gain measured on held-out orders.',
-    { x: M, y: 4.35, w: 6.4, h: 1.3, fontSize: 18, color: MUTED },
+    { x: M, y: 4.35, w: 5.6, h: 1.4, fontSize: 18, color: MUTED },
   )
-  text(s, 'NexAI Hack 2026 · Problem 4.2 · Warehouse Digital Twin', { x: M, y: 5.95, w: 6.4, h: 0.35, fontSize: 14, color: FG, bold: true })
-  text(s, 'Anand B (@Anandb71) · Junaid Ahamed (@JunaidAhamed-7777)', { x: M, y: 6.35, w: 6.4, h: 0.35, fontSize: 14, color: MUTED })
-  const h = 5.2
+  text(s, 'NexAI Hack 2026 · Problem 4.2 · Warehouse Digital Twin', { x: M, y: 5.95, w: 5.6, h: 0.35, fontSize: 14, color: FG, bold: true })
+  text(s, 'Anand B (@Anandb71) · Junaid Ahamed (@JunaidAhamed-7777)', { x: M, y: 6.35, w: 5.6, h: 0.35, fontSize: 14, color: MUTED })
+  const h = 4.8
   const w = h * floorAspect
-  s.addImage({ data: floorData, x: W - M - w, y: 1.45, w, h, altText: 'Floor plan of the declared warehouse: 5 aisles, 100 slots, dock at the front-left', objectName: 'floorplan' })
+  s.addImage({ data: floorData, x: W - M - w, y: (7.5 - h) / 2, w, h, altText: 'Floor plan of the declared warehouse: 5 aisles, 100 slots, dock at the front-left', objectName: 'floorplan' })
   s.addNotes(
     'Hook line: same orders, two layouts, and the ghost is our old warehouse. Ghostwalk is a browser 3D twin of a picking floor driven by real November 2011 orders from UCI Online Retail II. The rest of the deck backs up one claim: the walking we save is measured on orders the layout never saw.',
   )
@@ -268,16 +278,16 @@ pres.addSection({ title: 'Problem' })
 {
   const s = contentSlide('Problem', 'Slotting decides how far pickers walk')
   const w = (CONTENT_W - 0.8) / 3
-  const y = 1.65
-  const h = 3.55
-  card(s, M, y, w, h, '1', 'The cost', "Every order is a walk from the dock to each product's slot and back. Put the fast movers far away and every single order pays for it.")
-  card(s, M + w + 0.4, y, w, h, '2', 'The ask', 'A browser 3D twin of a picking floor, driven by real orders, where the player re-slots products and the twin shows the walking saved.', GHOST)
-  card(s, M + 2 * (w + 0.4), y, w, h, '3', 'The catch', 'The improvement has to be measured by replaying the same orders before and after, not claimed. Walking must follow aisles, never cut through racks.', GAIN)
-  panel(s, M, 5.6, CONTENT_W, 1.05, 'answer', RAISED)
+  const y = 1.75
+  const h = 3.1
+  card(s, M, y, w, h, '1', 'The cost', "Every order is a walk from the dock to each product's slot and back. Put the fast movers far away and every single order pays for it.", YOU, 17)
+  card(s, M + w + 0.4, y, w, h, '2', 'The ask', 'A browser 3D twin of a picking floor, driven by real orders, where the player re-slots products and the twin shows the walking saved.', GHOST, 17)
+  card(s, M + 2 * (w + 0.4), y, w, h, '3', 'The catch', 'The improvement has to be measured by replaying the same orders before and after, not claimed. Walking must follow aisles, never cut through racks.', GAIN, 17)
+  panel(s, M, 5.3, CONTENT_W, 1.05, 'answer', RAISED)
   text(s, [
     { text: 'Our answer  ', options: { bold: true, color: YOU } },
     { text: 'replay real invoices on an exact aisle graph, and score every layout on orders it has never seen.', options: { color: FG } },
-  ], { x: M + 0.35, y: 5.6, w: CONTENT_W - 0.7, h: 1.05, fontSize: 18, valign: 'middle' })
+  ], { x: M + 0.35, y: 5.3, w: CONTENT_W - 0.7, h: 1.05, fontSize: 18, valign: 'middle' })
   s.addNotes(
     "Problem statement PS 4.2 in one line: where each product sits decides how far pickers walk. The core challenge is in card 3. The twin must be driven by real order data, and the gain has to be measured by replaying exactly the same orders before and after. That sentence shaped every design decision we made.",
   )
@@ -506,13 +516,22 @@ pres.addSection({ title: 'Solution' })
   const nx = M + 8.5
   const nw = W - M - nx
   s.addShape(pres.ShapeType.roundRect, { x: nx, y: by, w: nw, h: bh, rectRadius: 0.1, fill: { color: PANEL }, line: { color: RULE, width: 1, dashType: 'dash' }, objectName: 'group-node' })
-  text(s, 'Node · npm run eval', { x: nx + 0.2, y: by + 0.1, w: nw - 0.4, h: 0.35, fontSize: 12, color: MUTED, bold: true })
-  box(s, nx + 0.3, by + 0.55, nw - 0.6, 0.8, 'eval/run.ts', 'the same sim/ engine')
-  box(s, nx + 0.3, by + 1.85, nw - 0.6, 0.8, 'eval/results.md', '→ README and this deck')
-  box(s, nx + 0.3, by + 2.9, nw - 0.6, 0.8, 'sa_seed42.json', '→ shipped SA layout in the app')
-  arrow(s, M + 8.5, 2.35, nx + 0.9, by + 0.55, MUTED) // orders.json -> eval
-  arrow(s, nx + nw / 2, by + 1.35, nx + nw / 2, by + 1.85)
-  arrow(s, nx + 0.3, by + 3.3, bx + bw, by + 0.95, MUTED) // sa json -> store (into the browser group)
+  text(s, 'Node · npm run eval', { x: nx + 0.2, y: by + bh - 0.45, w: nw - 0.4, h: 0.35, fontSize: 12, color: MUTED, bold: true })
+  const ncx = nx + nw / 2
+  box(s, nx + 0.3, by + 0.3, nw - 0.6, 0.8, 'eval/run.ts', 'the same sim/ engine')
+  box(s, nx + 0.3, by + 1.4, nw - 0.6, 0.8, 'eval/results.md', '→ README and this deck')
+  box(s, nx + 0.3, by + 2.5, nw - 0.6, 0.8, 'sa_seed42.json', '→ shipped SA layout in the app')
+  // orders.json -> eval/run.ts: right, then down
+  s.addShape(pres.ShapeType.line, { x: M + 9.0, y: 1.925, w: ncx - (M + 9.0), h: 0.001, line: { color: MUTED, width: 1.5 } })
+  arrow(s, ncx, 1.925, ncx, by + 0.3)
+  arrow(s, ncx, by + 1.1, ncx, by + 1.4)
+  // eval/run.ts -> sa_seed42.json, down the right-hand gutter
+  const gx = nx + nw - 0.15
+  s.addShape(pres.ShapeType.line, { x: gx - 0.15, y: by + 0.7, w: 0.15, h: 0.001, line: { color: MUTED, width: 1.5 } })
+  s.addShape(pres.ShapeType.line, { x: gx, y: by + 0.7, w: 0.001, h: 2.2, line: { color: MUTED, width: 1.5 } })
+  arrow(s, gx, by + 2.9, gx - 0.15, by + 2.9)
+  // sa_seed42.json -> the app (the store loads it as the SA reference)
+  arrow(s, nx + 0.3, by + 2.9, bx + bw, by + 2.9, YOU)
   s.addNotes(
     "One simulator everywhere. The engine is plain TypeScript with no DOM. In the browser it runs in a Web Worker so the 3D stays at 60 fps. The scene only plays back paths the simulator produced. The same files run in Node for npm run eval, which writes the results this deck and the README quote, plus the shipped SA layout.",
   )
@@ -561,10 +580,10 @@ pres.addSection({ title: 'Evidence' })
   const s = contentSlide('Evidence', 'Built so the numbers can be trusted')
   const cw = (CONTENT_W - 0.4) / 2
   const ch = 2.4
-  card(s, M, 1.55, cw, ch, '1', 'Held-out split', 'Layouts are built on 1–15 Nov and scored on 16–30 Nov. The split is chronological, the way a real warehouse re-slots on the past and lives with the future.', GHOST)
-  card(s, M + cw + 0.4, 1.55, cw, ch, '2', 'Baseline is the target', 'The headline is the gain vs fast movers nearest the dock, ranked by train picks. Original (catalogue order) and Random (seed 42) are shown, but second.')
-  card(s, M, 4.3, cw, ch, '3', 'Exact routing, limits reported', `Held–Karp up to ${EXACT_MAX_STOPS} stops, NN + 2-opt above, flagged per order. The Evidence panel prints the exact share of metres.`, GAIN)
-  card(s, M + cw + 0.4, 4.3, cw, ch, '4', 'Deterministic, one simulator', 'No Math.random or Date.now in the engine; mulberry32 with the seed on screen. The worker, the 3D playback and npm run eval share one engine.', GHOST)
+  card(s, M, 1.55, cw, ch, '1', 'Held-out split', 'Layouts are built on 1–15 Nov and scored on 16–30 Nov. The split is chronological, the way a real warehouse re-slots on the past and lives with the future.', GHOST, 17)
+  card(s, M + cw + 0.4, 1.55, cw, ch, '2', 'Baseline is the target', 'The headline is the gain vs fast movers nearest the dock, ranked by train picks. Original (catalogue order) and Random (seed 42) are shown, but second.', YOU, 17)
+  card(s, M, 4.3, cw, ch, '3', 'Exact routing, limits reported', `Held–Karp up to ${EXACT_MAX_STOPS} stops, NN + 2-opt above, flagged per order. The Evidence panel prints the exact share of metres.`, GAIN, 17)
+  card(s, M + cw + 0.4, 4.3, cw, ch, '4', 'Deterministic, one simulator', 'No Math.random or Date.now in the engine; mulberry32 with the seed on screen. The worker, the 3D playback and npm run eval share one engine.', GHOST, 17)
   s.addNotes(
     'These are the four questions we expect from judges, answered by design rather than by argument. The Q&A cards in docs/pitch go deeper on each.',
   )
@@ -574,24 +593,24 @@ pres.addSection({ title: 'Evidence' })
 {
   const s = contentSlide('Evidence', 'What we assumed, and what we did not build')
   const cw = (CONTENT_W - 0.4) / 2
-  panel(s, M, 1.55, cw, 5.1, 'assumed')
+  panel(s, M, 1.55, cw, 4.75, 'assumed')
   text(s, 'Declared, not observed', { x: M + 0.35, y: 1.8, w: cw - 0.7, h: 0.45, fontSize: 20, bold: true, color: YOU, fontFace: THEME.headFontFace })
   text(s, [
     { text: 'The warehouse geometry is ours. The orders are real; the building is not.', options: { bullet: true, breakLine: true } },
-    { text: `The time model is synthetic: metres / ${WALK_SPEED} m/s + ${PICK_SECONDS} s per line. No acceleration, search or queueing.`, options: { bullet: true, breakLine: true } },
+    { text: `The time model is synthetic: metres / ${WALK_SPEED}${NBSP}m/s + ${PICK_SECONDS}${NBSP}s per line. No acceleration, search or queueing.`, options: { bullet: true, breakLine: true } },
     { text: `Only the top ${meta.topSkus} SKUs are slotted. They cover ${coveragePct} of the month's lines, and other lines are left out.`, options: { bullet: true, breakLine: true } },
     { text: 'One retailer, one pre-Christmas month: gains may differ in other seasons or sectors.', options: { bullet: true } },
-  ], { x: M + 0.35, y: 2.45, w: cw - 0.7, h: 4.0, fontSize: 15, paraSpaceAfter: 10 })
+  ], { x: M + 0.35, y: 2.45, w: cw - 0.7, h: 3.7, fontSize: 17, paraSpaceAfter: 12 })
 
   const rx = M + cw + 0.4
-  panel(s, rx, 1.55, cw, 5.1, 'not-built')
+  panel(s, rx, 1.55, cw, 4.75, 'not-built')
   text(s, 'Not built (yet)', { x: rx + 0.35, y: 1.8, w: cw - 0.7, h: 0.45, fontSize: 20, bold: true, color: GHOST, fontFace: THEME.headFontFace })
   text(s, [
     { text: 'Batch picking: one trip serving several orders.', options: { bullet: true, breakLine: true } },
     { text: 'Several pickers with congestion in narrow aisles.', options: { bullet: true, breakLine: true } },
     { text: 'Rack levels, carton sizes and weights.', options: { bullet: true, breakLine: true } },
     { text: `Exact routing above ${EXACT_MAX_STOPS} stops: those orders use a heuristic, and their share is reported.`, options: { bullet: true } },
-  ], { x: rx + 0.35, y: 2.45, w: cw - 0.7, h: 4.0, fontSize: 15, paraSpaceAfter: 10 })
+  ], { x: rx + 0.35, y: 2.45, w: cw - 0.7, h: 3.7, fontSize: 17, paraSpaceAfter: 12 })
   s.addNotes('Read these aloud in the demo. Stating limits plainly is part of the result.')
 }
 
@@ -616,12 +635,12 @@ pres.addSection({ title: 'Close' })
   ]
   team.forEach(([n, gh, role], i) => {
     const x = M + i * (tw + 0.4)
-    panel(s, x, 3.55, tw, 2.25, `team-${n}`)
+    panel(s, x, 3.55, tw, 1.95, `team-${n}`)
     text(s, n, { x: x + 0.3, y: 3.75, w: tw - 0.6, h: 0.45, fontSize: 20, bold: true, fontFace: THEME.headFontFace })
     text(s, gh, { x: x + 0.3, y: 4.2, w: tw - 0.6, h: 0.35, fontSize: 14, color: GHOST })
-    text(s, role, { x: x + 0.3, y: 4.65, w: tw - 0.6, h: 1.0, fontSize: 14, color: MUTED })
+    text(s, role, { x: x + 0.3, y: 4.65, w: tw - 0.6, h: 0.75, fontSize: 14, color: MUTED })
   })
-  text(s, 'Built with Claude Code (Anthropic), declared in the README and DEV_LOG. Data: UCI Online Retail II, CC BY 4.0. Code: MIT.', {
+  text(s, `Built with Claude Code (Anthropic), declared in the README and DEV_LOG. Data: UCI Online Retail II, CC${NBSP}BY${NBSP}4.0. Code: MIT.`, {
     x: M, y: 6.1, w: lw, h: 0.6, fontSize: 12, color: MUTED,
   })
   const q = 3.3
